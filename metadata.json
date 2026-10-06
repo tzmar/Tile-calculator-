@@ -1,0 +1,6 @@
+{
+  "name": "Tile Calculator",
+  "description": "Calculate boxes of tiles, adhesive cement, grout, and bonding liquid with zero technical jargon.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
