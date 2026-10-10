@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -18,6 +19,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.Dp
@@ -236,6 +238,10 @@ fun LiquidTextField(
     label: String = "",
     keyboardType: KeyboardType = KeyboardType.Text,
     capitalization: KeyboardCapitalization = KeyboardCapitalization.None,
+    singleLine: Boolean = true,
+    maxLines: Int = 1,
+    imeAction: ImeAction = ImeAction.Default,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
     modifier: Modifier = Modifier,
     testTag: String = ""
 ) {
@@ -279,11 +285,15 @@ fun LiquidTextField(
                     }
                 }
             } else null,
-            singleLine = true,
+            singleLine = singleLine,
+            maxLines = maxLines,
             keyboardOptions = KeyboardOptions(
                 keyboardType = keyboardType,
-                capitalization = capitalization
+                capitalization = capitalization,
+                autoCorrectEnabled = (keyboardType == KeyboardType.Text),
+                imeAction = imeAction
             ),
+            keyboardActions = keyboardActions,
             shape = RoundedCornerShape(18.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedContainerColor = Color.White,

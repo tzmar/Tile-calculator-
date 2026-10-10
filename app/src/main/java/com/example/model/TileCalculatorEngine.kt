@@ -87,7 +87,10 @@ data class JobCalculatedResult(
     val floorCoveragePerBag: Double,
     val wallCoveragePerBag: Double,
     val isBedThickWarning: Boolean, // > 10 mm
-    val bondingLiquidLitres: Int,
+    val bondingLiquidLitres: Double,
+    val bondingLiquidMode: BondingLiquidMode,
+    val bondingLiquidMlPerBag: Double,
+    val bondingLiquidResultText: String,
 
     // Grout
     val groutBags: Int,
@@ -110,6 +113,35 @@ data class JobCalculatedResult(
 )
 
 object TileCalculatorEngine {
+
+    fun formatLitres(litres: Double): String {
+        val rounded = kotlin.math.round(litres * 100.0) / 100.0
+        val numStr = if (rounded % 1.0 == 0.0) {
+            rounded.toInt().toString()
+        } else {
+            String.format(Locale.US, "%.2f", rounded).trimEnd('0').trimEnd('.')
+        }
+        return if (rounded == 1.0) "$numStr litre" else "$numStr litres"
+    }
+
+    fun formatBondingLiquidResult(
+        include: Boolean,
+        mode: BondingLiquidMode,
+        litres: Double,
+        mlPerBag: Double
+    ): String {
+        if (!include || litres <= 0.0) return ""
+        val litresStr = formatLitres(litres)
+        return when (mode) {
+            BondingLiquidMode.ADDITIVE_SPLASH -> {
+                val mlText = if (mlPerBag % 1.0 == 0.0) "${mlPerBag.toInt()} ml" else "$mlPerBag ml"
+                "Bonding liquid: $litresStr (about $mlText per bag of adhesive)"
+            }
+            BondingLiquidMode.WET_AREA_FULL -> {
+                "Bonding liquid: $litresStr (wet area: replaces all mixing water)"
+            }
+        }
+    }
 
     fun parseNum(s: String): Double {
         return s.trim().replace(',', '.').toDoubleOrNull() ?: 0.0
@@ -483,7 +515,36 @@ object TileCalculatorEngine {
 
         val isBedThickWarning = chosenFloorThick > 10.0
 
-        val bondingLitres = if (adhConfig.includeBondingLiquid) adhesiveBags * 5 else 0
+        val effectiveMlPerBag = if (adhConfig.customBondingMl.isNotBlank()) {
+            val parsed = parseNum(adhConfig.customBondingMl)
+            if (parsed > 0) parsed else adhConfig.bondingMlPerBag
+        } else {
+            adhConfig.bondingMlPerBag
+        }
+
+        val bondingLitres: Double = if (!adhConfig.includeBondingLiquid || adhesiveBags <= 0) {
+            0.0
+        } else {
+            when (adhConfig.bondingLiquidMode) {
+                BondingLiquidMode.ADDITIVE_SPLASH -> {
+                    // Bonding liquid needed (litres) = adhesive bags x ml per bag / 1000, rounded UP to the nearest 0.25 litre
+                    val rawLitres = adhesiveBags * (effectiveMlPerBag / 1000.0)
+                    val rounded = ceil(rawLitres / 0.25) * 0.25
+                    kotlin.math.round(rounded * 100.0) / 100.0
+                }
+                BondingLiquidMode.WET_AREA_FULL -> {
+                    // Wet area: use bonding liquid instead of all the mixing water -> adhesive bags x 5
+                    adhesiveBags * 5.0
+                }
+            }
+        }
+
+        val bondingResultText = formatBondingLiquidResult(
+            include = adhConfig.includeBondingLiquid,
+            mode = adhConfig.bondingLiquidMode,
+            litres = bondingLitres,
+            mlPerBag = effectiveMlPerBag
+        )
 
         // Grout
         val groutCov = if (adhConfig.groutCoveragePerBag > 0) adhConfig.groutCoveragePerBag else 10.0
@@ -521,6 +582,9 @@ object TileCalculatorEngine {
             wallCoveragePerBag = wallCovPerBag,
             isBedThickWarning = isBedThickWarning,
             bondingLiquidLitres = bondingLitres,
+            bondingLiquidMode = adhConfig.bondingLiquidMode,
+            bondingLiquidMlPerBag = effectiveMlPerBag,
+            bondingLiquidResultText = bondingResultText,
             groutBags = groutBags,
             totalSpacersCount = totalSpacers,
             spacerSizeMm = job.sharedFloorTileSpec.spacerMm,
@@ -637,7 +701,12 @@ object TileCalculatorEngine {
         sb.append("Tile adhesive (${calc.adhesiveBrandName}): ${calc.adhesiveBags} bags, ${calc.floorThicknessMm.toInt()} mm thick\n")
         sb.append("Grout: ${calc.groutBags} bags\n")
         if (calc.bondingLiquidLitres > 0) {
-            sb.append("Bonding liquid (optional): ${calc.bondingLiquidLitres} litres\n")
+            if (calc.bondingLiquidMode == BondingLiquidMode.ADDITIVE_SPLASH) {
+                val mlText = if (calc.bondingLiquidMlPerBag % 1.0 == 0.0) "${calc.bondingLiquidMlPerBag.toInt()} ml" else "${calc.bondingLiquidMlPerBag} ml"
+                sb.append("Bonding liquid (optional): ${formatLitres(calc.bondingLiquidLitres)} (about $mlText per bag of adhesive)\n")
+            } else {
+                sb.append("Bonding liquid (wet area): ${formatLitres(calc.bondingLiquidLitres)} (replaces all mixing water, 5 litres per bag)\n")
+            }
         }
         if (calc.isTileChosen && calc.totalSpacersCount > 0) {
             sb.append("Tile spacers (${calc.spacerSizeMm.toInt()} mm): ${calc.totalSpacersCount} pieces\n")

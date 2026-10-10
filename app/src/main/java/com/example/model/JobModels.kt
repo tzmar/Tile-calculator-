@@ -41,6 +41,11 @@ enum class EdgeStripMaterial(val label: String) {
     METAL("Metal")
 }
 
+enum class BondingLiquidMode(val label: String) {
+    ADDITIVE_SPLASH("Splash per bag (normal rooms)"),
+    WET_AREA_FULL("Wet area: use bonding liquid instead of all the mixing water")
+}
+
 enum class AdhesiveBrand(
     val displayName: String,
     val defaultFloorCov: Double,
@@ -154,7 +159,10 @@ data class AdhesiveConfig(
     val floorThicknessMm: Double = 5.0,
     val wallThicknessMm: Double = 3.0,
     val groutCoveragePerBag: Double = 10.0,
-    val includeBondingLiquid: Boolean = true
+    val includeBondingLiquid: Boolean = false, // Switched off by default
+    val bondingLiquidMode: BondingLiquidMode = BondingLiquidMode.ADDITIVE_SPLASH,
+    val bondingMlPerBag: Double = 250.0, // Default 250 ml
+    val customBondingMl: String = ""
 )
 
 data class Job(

@@ -28,6 +28,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -191,6 +192,7 @@ fun JobDetailScreen(
                         placeholder = "e.g. Mr Kgosi - 3 bedroom house",
                         keyboardType = KeyboardType.Text,
                         capitalization = KeyboardCapitalization.Words,
+                        imeAction = ImeAction.Next,
                         testTag = "job_name_input"
                     )
 
@@ -205,7 +207,9 @@ fun JobDetailScreen(
                                 label = "Client (optional)",
                                 placeholder = "Mr Kgosi",
                                 keyboardType = KeyboardType.Text,
-                                capitalization = KeyboardCapitalization.Words
+                                capitalization = KeyboardCapitalization.Words,
+                                imeAction = ImeAction.Next,
+                                testTag = "client_name_input"
                             )
                         }
                         Box(modifier = Modifier.weight(1f)) {
@@ -215,10 +219,25 @@ fun JobDetailScreen(
                                 label = "Site / Plot (optional)",
                                 placeholder = "Gaborone Plot 1234",
                                 keyboardType = KeyboardType.Text,
-                                capitalization = KeyboardCapitalization.Sentences
+                                capitalization = KeyboardCapitalization.Sentences,
+                                imeAction = ImeAction.Next,
+                                testTag = "site_address_input"
                             )
                         }
                     }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    LiquidTextField(
+                        value = job.notes,
+                        onValueChange = { viewModel.updateActiveJob { j -> j.copy(notes = it) } },
+                        label = "Job notes (optional)",
+                        placeholder = "e.g. Client provides tiles, start on Monday",
+                        keyboardType = KeyboardType.Text,
+                        capitalization = KeyboardCapitalization.Sentences,
+                        imeAction = ImeAction.Done,
+                        testTag = "job_notes_input"
+                    )
 
                     Spacer(modifier = Modifier.height(8.dp))
 
@@ -856,7 +875,8 @@ private fun AdhesiveSectionControls(
             },
             label = "Average floor bed thickness (mm):",
             placeholder = "5",
-            suffix = "mm"
+            suffix = "mm",
+            keyboardType = KeyboardType.Decimal
         )
 
         // Tip & warnings
@@ -879,20 +899,24 @@ private fun AdhesiveSectionControls(
             }
         }
 
-        // Bonding liquid switch
+        Spacer(modifier = Modifier.height(4.dp))
+        HorizontalDivider(color = LiquidGrassPale, thickness = 1.dp)
+        Spacer(modifier = Modifier.height(4.dp))
+
+        // Bonding liquid switch: "Add bonding liquid to the mix (optional)"
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
+            Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
                 Text(
-                    text = "Include bonding liquid (primer)",
+                    text = "Add bonding liquid to the mix (optional)",
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                     color = TextForestDeep
                 )
                 Text(
-                    text = "Replaces mixing water (5 litres per adhesive bag)",
+                    text = "Optional additive for extra strength and water resistance",
                     style = MaterialTheme.typography.bodySmall,
                     color = TextForestMuted
                 )
@@ -900,8 +924,193 @@ private fun AdhesiveSectionControls(
             Switch(
                 checked = adhesiveConfig.includeBondingLiquid,
                 onCheckedChange = { onUpdate { s -> s.copy(includeBondingLiquid = it) } },
-                colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = LiquidGrassPrimary)
+                colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = LiquidGrassPrimary),
+                modifier = Modifier.testTag("bonding_liquid_switch")
             )
+        }
+
+        if (adhesiveConfig.includeBondingLiquid) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Surface(
+                color = LiquidGrassPale.copy(alpha = 0.45f),
+                shape = RoundedCornerShape(16.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x30059669)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Text(
+                        text = "Bonding liquid mix ratio:",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = TextForestDeep
+                        )
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // 1) Small splash per bag (normal rooms)
+                    val isSplash = adhesiveConfig.bondingLiquidMode == BondingLiquidMode.ADDITIVE_SPLASH
+                    Surface(
+                        onClick = { onUpdate { it.copy(bondingLiquidMode = BondingLiquidMode.ADDITIVE_SPLASH) } },
+                        shape = RoundedCornerShape(12.dp),
+                        color = if (isSplash) Color.White else Color.Transparent,
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            if (isSplash) LiquidGrassPrimary else Color(0x20059669)
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(10.dp)
+                        ) {
+                            RadioButton(
+                                selected = isSplash,
+                                onClick = { onUpdate { it.copy(bondingLiquidMode = BondingLiquidMode.ADDITIVE_SPLASH) } },
+                                colors = RadioButtonDefaults.colors(selectedColor = LiquidGrassPrimary)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Column {
+                                Text(
+                                    text = "Small splash per bag (normal rooms)",
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        color = TextForestDeep
+                                    )
+                                )
+                                Text(
+                                    text = "A small splash mixed in each 20 kg bag of adhesive",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = TextForestMuted
+                                )
+                            }
+                        }
+                    }
+
+                    if (isSplash) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            text = "How much per 20 kg bag of adhesive:",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = TextForestDeep
+                            )
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        val presets = listOf(150.0, 250.0, 400.0)
+                        val isCustom = adhesiveConfig.customBondingMl.isNotBlank() ||
+                                (!presets.contains(adhesiveConfig.bondingMlPerBag) && adhesiveConfig.customBondingMl.isNotEmpty())
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            presets.forEach { ml ->
+                                val selected = !isCustom && adhesiveConfig.bondingMlPerBag == ml
+                                val label = if (ml == 250.0) "250 ml" else "${ml.toInt()} ml"
+                                LiquidPillChip(
+                                    label = label,
+                                    isSelected = selected,
+                                    onClick = {
+                                        onUpdate {
+                                            it.copy(
+                                                bondingMlPerBag = ml,
+                                                customBondingMl = ""
+                                            )
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                            LiquidPillChip(
+                                label = "Custom",
+                                isSelected = isCustom,
+                                onClick = {
+                                    if (!isCustom) {
+                                        onUpdate {
+                                            it.copy(customBondingMl = adhesiveConfig.bondingMlPerBag.toInt().toString())
+                                        }
+                                    }
+                                },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+
+                        if (isCustom) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            LiquidTextField(
+                                value = adhesiveConfig.customBondingMl,
+                                onValueChange = { onUpdate { s -> s.copy(customBondingMl = it) } },
+                                label = "Custom amount per bag (ml):",
+                                placeholder = "e.g. 300",
+                                suffix = "ml",
+                                keyboardType = KeyboardType.Number,
+                                testTag = "custom_bonding_ml_input"
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // 2) Wet area: use bonding liquid instead of all the mixing water
+                    val isWetArea = adhesiveConfig.bondingLiquidMode == BondingLiquidMode.WET_AREA_FULL
+                    Surface(
+                        onClick = { onUpdate { it.copy(bondingLiquidMode = BondingLiquidMode.WET_AREA_FULL) } },
+                        shape = RoundedCornerShape(12.dp),
+                        color = if (isWetArea) Color.White else Color.Transparent,
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            if (isWetArea) LiquidGrassPrimary else Color(0x20059669)
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(10.dp)
+                        ) {
+                            RadioButton(
+                                selected = isWetArea,
+                                onClick = { onUpdate { it.copy(bondingLiquidMode = BondingLiquidMode.WET_AREA_FULL) } },
+                                colors = RadioButtonDefaults.colors(selectedColor = LiquidGrassPrimary)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Column {
+                                Text(
+                                    text = "Wet area: use bonding liquid instead of all the mixing water",
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        color = TextForestDeep
+                                    )
+                                )
+                                Text(
+                                    text = "For bathrooms and showers (5 litres per 20 kg bag)",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = TextForestMuted
+                                )
+                            }
+                        }
+                    }
+
+                    if (isWetArea) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Surface(
+                            color = Color(0xFFEFF6FF),
+                            shape = RoundedCornerShape(10.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFBFDBFE)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "Normal rooms only need a small splash. Use this only for wet areas.",
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    fontWeight = FontWeight.Medium,
+                                    color = Color(0xFF1D4ED8)
+                                ),
+                                modifier = Modifier.padding(10.dp)
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -1038,7 +1247,7 @@ private fun MaterialsSummaryCard(calc: JobCalculatedResult) {
             quantity = "${calc.adhesiveBags} bags (20 kg)"
         )
 
-        Divider(color = LiquidGrassPale, thickness = 1.dp)
+        HorizontalDivider(color = LiquidGrassPale, thickness = 1.dp)
 
         // Grout
         MaterialSummaryRow(
@@ -1049,17 +1258,39 @@ private fun MaterialsSummaryCard(calc: JobCalculatedResult) {
         )
 
         if (calc.bondingLiquidLitres > 0) {
-            Divider(color = LiquidGrassPale, thickness = 1.dp)
+            HorizontalDivider(color = LiquidGrassPale, thickness = 1.dp)
             MaterialSummaryRow(
                 icon = Icons.Outlined.WaterDrop,
-                title = "Bonding Liquid (Optional)",
-                subtitle = "Replaces mixing water for extra strength",
-                quantity = "${calc.bondingLiquidLitres} litres"
+                title = if (calc.bondingLiquidMode == BondingLiquidMode.WET_AREA_FULL) "Bonding Liquid (Wet Area)" else "Bonding Liquid (Optional)",
+                subtitle = if (calc.bondingLiquidMode == BondingLiquidMode.WET_AREA_FULL) {
+                    "Full mixing liquid instead of water"
+                } else {
+                    "About ${if (calc.bondingLiquidMlPerBag % 1.0 == 0.0) calc.bondingLiquidMlPerBag.toInt() else calc.bondingLiquidMlPerBag} ml per 20 kg bag"
+                },
+                quantity = TileCalculatorEngine.formatLitres(calc.bondingLiquidLitres)
             )
+
+            // Result callout as specified: e.g. "Bonding liquid: 1 litre (about 250 ml per bag of adhesive)"
+            Surface(
+                color = LiquidGrassPale.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+            ) {
+                Text(
+                    text = calc.bondingLiquidResultText,
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        color = LiquidGrassDeep
+                    ),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                )
+            }
         }
 
         if (calc.isTileChosen && calc.totalSpacersCount > 0) {
-            Divider(color = LiquidGrassPale, thickness = 1.dp)
+            HorizontalDivider(color = LiquidGrassPale, thickness = 1.dp)
             MaterialSummaryRow(
                 icon = Icons.Outlined.GridOn,
                 title = "Tile Spacers",
@@ -1069,7 +1300,7 @@ private fun MaterialsSummaryCard(calc: JobCalculatedResult) {
         }
 
         if (calc.plasticEdgeStripPieces > 0) {
-            Divider(color = LiquidGrassPale, thickness = 1.dp)
+            HorizontalDivider(color = LiquidGrassPale, thickness = 1.dp)
             MaterialSummaryRow(
                 icon = Icons.Outlined.HorizontalRule,
                 title = "Plastic Edge Strips",
@@ -1079,7 +1310,7 @@ private fun MaterialsSummaryCard(calc: JobCalculatedResult) {
         }
 
         if (calc.metalEdgeStripPieces > 0) {
-            Divider(color = LiquidGrassPale, thickness = 1.dp)
+            HorizontalDivider(color = LiquidGrassPale, thickness = 1.dp)
             MaterialSummaryRow(
                 icon = Icons.Outlined.HorizontalRule,
                 title = "Metal Edge Strips",

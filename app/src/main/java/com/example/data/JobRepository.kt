@@ -196,6 +196,9 @@ class JobRepository(private val context: Context) {
             put("wallThicknessMm", adh.wallThicknessMm)
             put("groutCov", adh.groutCoveragePerBag)
             put("includeBondingLiquid", adh.includeBondingLiquid)
+            put("bondingLiquidMode", adh.bondingLiquidMode.name)
+            put("bondingMlPerBag", adh.bondingMlPerBag)
+            put("customBondingMl", adh.customBondingMl)
         }
         obj.put("adhesiveConfig", adhObj)
 
@@ -314,6 +317,11 @@ class JobRepository(private val context: Context) {
             } catch (e: Exception) {
                 AdhesiveBrand.EASY_GRIP
             }
+            val bMode = try {
+                BondingLiquidMode.valueOf(adhObj.optString("bondingLiquidMode", BondingLiquidMode.ADDITIVE_SPLASH.name))
+            } catch (e: Exception) {
+                BondingLiquidMode.ADDITIVE_SPLASH
+            }
             AdhesiveConfig(
                 brand = brand,
                 otherFloorCoverage = adhObj.optDouble("otherFloorCov", 3.5),
@@ -321,7 +329,10 @@ class JobRepository(private val context: Context) {
                 floorThicknessMm = adhObj.optDouble("floorThicknessMm", 5.0),
                 wallThicknessMm = adhObj.optDouble("wallThicknessMm", 3.0),
                 groutCoveragePerBag = adhObj.optDouble("groutCov", 10.0),
-                includeBondingLiquid = adhObj.optBoolean("includeBondingLiquid", true)
+                includeBondingLiquid = adhObj.optBoolean("includeBondingLiquid", false),
+                bondingLiquidMode = bMode,
+                bondingMlPerBag = adhObj.optDouble("bondingMlPerBag", 250.0),
+                customBondingMl = adhObj.optString("customBondingMl", "")
             )
         } else AdhesiveConfig()
 
