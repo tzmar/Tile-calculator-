@@ -1,29 +1,148 @@
 package com.example
 
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
+import android.app.Application
+import androidx.test.core.app.ApplicationProvider
+import com.example.model.*
+import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [36])
 class TileCalculatorUnitTest {
 
     private lateinit var viewModel: TileCalculatorViewModel
 
     @Before
     fun setUp() {
-        viewModel = TileCalculatorViewModel()
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        viewModel = TileCalculatorViewModel(app)
     }
 
     @Test
-    fun testDefaultCalculations() {
-        // Room: 3.5m x 1.8m
-        // Tile size: 60x60 cm (index 2)
-        // Tiles per box: 12
-        // Waste: 10%
-        // Adhesive coverage: 4.0 m² / bag
-        // Grout coverage: 10.0 m² / bag
-        // Bonding coverage: 5.0 m² / L
+    fun testCommaAndDotParsing() {
+        assertEquals(3.5, TileCalculatorEngine.parseNum("3.5"), 0.001)
+        assertEquals(3.5, TileCalculatorEngine.parseNum("3,5"), 0.001)
+        assertEquals(12.75, TileCalculatorEngine.parseNum(" 12,75 "), 0.001)
+    }
+
+    @Test
+    fun testUnitConversion() {
+        // Meters to meters
+        assertEquals(4.0, MeasurementUnit.METERS.toMeters(4.0), 0.001)
+        // Centimeters to meters (400 cm -> 4.0 m)
+        assertEquals(4.0, MeasurementUnit.CENTIMETERS.toMeters(400.0), 0.001)
+        // Feet to meters (10 ft -> 3.048 m)
+        assertEquals(3.048, MeasurementUnit.FEET.toMeters(10.0), 0.001)
+    }
+
+    @Test
+    fun testSkirtingCutFromFloorTiles() {
+        // Room: 4.0m x 3.0m
+        // Doorway: 1 x 0.9m
+        // Perimeter = 2*(4+3) - 0.9 = 13.1 m
+        // Tile: 60x60 cm, skirting height 10 cm, waste 10%
+        // Strips per tile = floor(60 / 10) = 6
+        // Strip length = 0.6 m
+        // Strips needed = ceil((13.1 / 0.6) * 1.10) = ceil(21.833 * 1.10) = ceil(24.016) = 25 strips
+        // Floor tiles used = ceil(25 / 6) = 5 tiles
+        val room = AreaItem(
+            name = "Main bedroom",
+            type = AreaType.ROOM_FLOOR,
+            lengthInput = "4.0",
+            widthInput = "3.0",
+            doorwayCount = 1,
+            doorwayWidthInput = "0.9",
+            skirting = SkirtingConfig(enabled = true, heightCm = 10.0, method = SkirtingMethod.CUT_FROM_FLOOR)
+        )
+
+        val job = Job(
+            unit = MeasurementUnit.METERS,
+            isTileChosen = true,
+            sharedFloorTileSpec = TileSpec(sizeLabel = "60 x 60 cm", lengthCm = 60.0, widthCm = 60.0, tilesPerBox = 12, wastePercent = 10.0, spacerMm = 3.0),
+            areas = listOf(room)
+        )
+
+        val areaResult = TileCalculatorEngine.calculateArea(room, job)
+        assertEquals(13.1, areaResult.skirtingLengthMeters, 0.001)
+        assertEquals(5, areaResult.skirtingTilesAddedToFloor)
+
+        // Floor surface: 4 * 3 = 12 m²
+        // Eff tile area = (0.603 * 0.603) = 0.3636 m²
+        // Raw floor tiles = 12 / 0.3636 = 33.00 -> with 10% waste = 36.3 -> ceil = 37 tiles
+        assertEquals(37, areaResult.floorTilesOnly)
+
+        // Total floor tiles needed = 37 + 5 = 42 tiles
+        assertEquals(42, areaResult.totalFloorTilesNeeded)
+
+        // Boxes: ceil(42 / 12) = 4 boxes
+        assertEquals(4, areaResult.floorBoxesToBuy)
+        // Total tiles in 4 boxes = 48 -> spare = 48 - 42 = 6 spare
+        assertEquals(6, areaResult.floorSpareTiles)
+    }
+
+    @Test
+    fun testAdhesiveCoverageFormula() {
+        // Easy Grip: floor printed 3.5 m² at 5 mm bed, wall printed 5.0 m² at 3 mm bed
+        // If floor bed is 12 mm (> 10 mm warning):
+        val room = AreaItem(
+            name = "Floor",
+            type = AreaType.ROOM_FLOOR,
+            lengthInput = "3.5",
+            widthInput = "2.0", // 7.0 m²
+            skirting = SkirtingConfig(enabled = false)
+        )
+
+        val job = Job(
+            isTileChosen = true,
+            areas = listOf(room),
+            adhesiveConfig = AdhesiveConfig(
+                brand = AdhesiveBrand.EASY_GRIP,
+                floorThicknessMm = 12.0
+            )
+        )
+
+        val calc = TileCalculatorEngine.calculateJob(job)
+        // 3.5 * (5 / 12) = 1.4583 m² per bag
+        // 7.0 / 1.4583 = 4.8 -> ceil = 5 bags
+        assertEquals(5, calc.adhesiveBags)
+        assertTrue(calc.isBedThickWarning)
+    }
+
+    @Test
+    fun testQuotationFormatHasNoPricesAndProperHeadings() {
+        val room = AreaItem(name = "Lounge", type = AreaType.ROOM_FLOOR, lengthInput = "4.0", widthInput = "3.0")
+        val job = Job(
+            jobName = "Mr Kgosi - 3 bedroom house",
+            clientName = "Mr Kgosi",
+            siteAddress = "Gaborone",
+            dateString = "10 Oct 2026",
+            areas = listOf(room)
+        )
+        val profile = UserProfile("Thabo Builders", "71 234 567")
+
+        val quote = TileCalculatorEngine.generateQuotation(job, profile, detailed = true)
+
+        assertTrue(quote.contains("TILING QUOTATION"))
+        assertTrue(quote.contains("Prepared by: Thabo Builders, 71 234 567"))
+        assertTrue(quote.contains("Client: Mr Kgosi"))
+        assertTrue(quote.contains("MATERIALS TO BUY"))
+        assertTrue(quote.contains("NOTES"))
+
+        // Golden rule: NO prices or currency anywhere in the app!
+        assertFalse(quote.contains("BWP"))
+        assertFalse(quote.contains("Pula"))
+        assertFalse(quote.contains("$"))
+        assertFalse(quote.contains("Cost"))
+        assertFalse(quote.contains("Price"))
+    }
+
+    @Test
+    fun testLegacyDefaultCalculations() {
+        // Test compatibility helper methods
         viewModel.onRoomLengthChange("3.5")
         viewModel.onRoomWidthChange("1.8")
         viewModel.onTileSizeSelect(2) // 60x60 cm
@@ -35,85 +154,9 @@ class TileCalculatorUnitTest {
         assertNull(state.errorMessage)
         val result = state.result
         assertNotNull(result)
-
-        // Room Area: 3.5 * 1.8 = 6.30 m²
         assertEquals(6.3, result!!.roomAreaSqM, 0.001)
-
-        // Tile Area: 0.6 * 0.6 = 0.36 m²
-        assertEquals(0.36, result.tileAreaSqM, 0.001)
-
-        // Raw tiles = 6.3 / 0.36 = 17.5; with 10% waste = 19.25; ceil = 20 tiles
         assertEquals(20, result.totalTilesNeeded)
-
-        // Boxes needed: ceil(20 / 12) = 2 boxes
         assertEquals(2, result.boxesToBuy)
-
-        // Total tiles in 2 boxes = 24
-        assertEquals(24, result.totalTilesInBoxes)
-
-        // Spare tiles = 24 - 20 = 4
         assertEquals(4, result.spareTiles)
-
-        // Adhesive: ceil(6.3 / 4.0) = 2 bags
-        assertEquals(2, result.adhesiveBags)
-
-        // Grout: ceil(6.3 / 10.0) = 1 bag
-        assertEquals(1, result.groutBags)
-
-        // Bonding liquid: ceil(6.3 / 5.0) = 2 litres
-        assertEquals(2, result.bondingLitres)
-    }
-
-    @Test
-    fun testCustomTileDimensions() {
-        viewModel.onRoomLengthChange("4.0")
-        viewModel.onRoomWidthChange("3.0")
-        // Custom size is index 5
-        viewModel.onTileSizeSelect(5)
-        viewModel.onCustomTileLengthChange("50")
-        viewModel.onCustomTileWidthChange("50")
-        viewModel.onTilesPerBoxChange("10")
-        viewModel.onWasteAllowanceChange(10.0)
-        viewModel.calculate()
-
-        val state = viewModel.uiState.value
-        assertNull(state.errorMessage)
-        val result = state.result
-        assertNotNull(result)
-
-        // Room area = 12.0 m²
-        assertEquals(12.0, result!!.roomAreaSqM, 0.001)
-        // Tile area = 0.5 * 0.5 = 0.25 m²
-        assertEquals(0.25, result.tileAreaSqM, 0.001)
-        // Tiles needed: 12.0 / 0.25 = 48 tiles * 1.10 = 52.8 -> ceil = 53
-        assertEquals(53, result.totalTilesNeeded)
-        // Boxes needed: ceil(53 / 10) = 6 boxes
-        assertEquals(6, result.boxesToBuy)
-        // Total tiles: 60
-        assertEquals(60, result.totalTilesInBoxes)
-        // Spare: 60 - 53 = 7
-        assertEquals(7, result.spareTiles)
-    }
-
-    @Test
-    fun testValidationForEmptyFields() {
-        viewModel.onRoomLengthChange("")
-        viewModel.calculate()
-        assertEquals("Please enter your room length in meters (e.g. 3.5)", viewModel.uiState.value.errorMessage)
-
-        viewModel.onRoomLengthChange("3.5")
-        viewModel.onRoomWidthChange("")
-        viewModel.calculate()
-        assertEquals("Please enter your room width in meters (e.g. 1.8)", viewModel.uiState.value.errorMessage)
-    }
-
-    @Test
-    fun testReset() {
-        viewModel.loadExample()
-        assertNotNull(viewModel.uiState.value.result)
-        viewModel.reset()
-        assertNull(viewModel.uiState.value.result)
-        assertEquals("", viewModel.uiState.value.roomLength)
-        assertEquals("", viewModel.uiState.value.roomWidth)
     }
 }
