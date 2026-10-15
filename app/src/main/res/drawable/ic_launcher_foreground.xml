@@ -3,6 +3,6 @@
     <item
         android:width="66dp"
         android:height="66dp"
-        android:drawable="@drawable/tile_liquid_grass_1791278185201"
+        android:drawable="@drawable/tile_pro_icon_1792074434927"
         android:gravity="center" />
 </layer-list>

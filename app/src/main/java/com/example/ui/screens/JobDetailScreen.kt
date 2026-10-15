@@ -782,6 +782,31 @@ private fun TileChooserControls(
             color = TextForestMuted
         )
 
+        Spacer(modifier = Modifier.height(4.dp))
+        // Joint depth (usually the tile thickness)
+        Text(
+            text = "Joint depth (usually the tile thickness):",
+            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = TextForestDeep)
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            listOf(6.0, 8.0, 10.0, 12.0).forEach { depth ->
+                LiquidPillChip(
+                    label = "${depth.toInt()} mm",
+                    isSelected = floorSpec.jointDepthMm == depth,
+                    onClick = { onUpdateFloorTile { it.copy(jointDepthMm = depth) } },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+        Text(
+            text = "Matches tile thickness for geometric grout calculation (default 10 mm).",
+            style = MaterialTheme.typography.bodySmall,
+            color = TextForestMuted
+        )
+
         // Switches:
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -898,6 +923,59 @@ private fun AdhesiveSectionControls(
                 )
             }
         }
+
+        Spacer(modifier = Modifier.height(4.dp))
+        HorizontalDivider(color = LiquidGrassPale, thickness = 1.dp)
+        Spacer(modifier = Modifier.height(4.dp))
+
+        // Wall & Skirting bed thickness
+        Text(
+            text = "Wall & skirting adhesive thickness:",
+            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = TextForestDeep)
+        )
+        Text(
+            text = "Walls and skirting sit on hand-built blocks and usually need a thinner bed (default 3 mm):",
+            style = MaterialTheme.typography.bodySmall,
+            color = TextForestMuted
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            val wallThicknesses = listOf(
+                Pair(3.0, "Level 3 mm"),
+                Pair(6.0, "Slightly uneven 6 mm"),
+                Pair(10.0, "Very uneven 10 mm")
+            )
+            wallThicknesses.forEach { (t, lbl) ->
+                val isSel = adhesiveConfig.wallThicknessMm == t && adhesiveConfig.customWallThicknessMm.isBlank()
+                LiquidPillChip(
+                    label = lbl,
+                    isSelected = isSel,
+                    onClick = {
+                        onUpdate {
+                            it.copy(wallThicknessMm = t, customWallThicknessMm = "", skirtingThicknessMm = t, customSkirtingThicknessMm = "")
+                        }
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+
+        LiquidTextField(
+            value = if (adhesiveConfig.customWallThicknessMm.isNotBlank()) adhesiveConfig.customWallThicknessMm else adhesiveConfig.wallThicknessMm.toString(),
+            onValueChange = {
+                val v = TileCalculatorEngine.parseNum(it)
+                onUpdate { s ->
+                    s.copy(
+                        customWallThicknessMm = it,
+                        wallThicknessMm = if (v > 0) v else s.wallThicknessMm,
+                        skirtingThicknessMm = if (v > 0) v else s.skirtingThicknessMm
+                    )
+                }
+            },
+            label = "Average wall & skirting bed thickness (mm):",
+            placeholder = "3",
+            suffix = "mm",
+            keyboardType = KeyboardType.Decimal
+        )
 
         Spacer(modifier = Modifier.height(4.dp))
         HorizontalDivider(color = LiquidGrassPale, thickness = 1.dp)
@@ -1112,6 +1190,111 @@ private fun AdhesiveSectionControls(
                 }
             }
         }
+
+        Spacer(modifier = Modifier.height(6.dp))
+        HorizontalDivider(color = LiquidGrassPale, thickness = 1.dp)
+        Spacer(modifier = Modifier.height(6.dp))
+
+        // Advanced Grout Settings (Bag size & density overrides)
+        var isGroutAdvancedOpen by remember { mutableStateOf(false) }
+        Surface(
+            onClick = { isGroutAdvancedOpen = !isGroutAdvancedOpen },
+            shape = RoundedCornerShape(12.dp),
+            color = Color.White.copy(alpha = 0.5f),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x30059669)),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier.padding(12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "Advanced Grout Settings",
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold, color = TextForestDeep)
+                    )
+                    Text(
+                        text = "Grout bag size (2 kg / 5 kg) & density override",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextForestMuted
+                    )
+                }
+                Icon(
+                    imageVector = if (isGroutAdvancedOpen) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+                    contentDescription = "Toggle advanced grout settings",
+                    tint = LiquidGrassPrimary
+                )
+            }
+        }
+
+        if (isGroutAdvancedOpen) {
+            Surface(
+                color = LiquidGrassPale.copy(alpha = 0.45f),
+                shape = RoundedCornerShape(14.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x30059669)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Grout bag size to buy:",
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = TextForestDeep)
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(5, 2).forEach { size ->
+                            LiquidPillChip(
+                                label = "$size kg bag${if (size == 5) " (default)" else ""}",
+                                isSelected = adhesiveConfig.groutBagSizeKg == size,
+                                onClick = { onUpdate { it.copy(groutBagSizeKg = size) } },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Grout type & density (kg/litre):",
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = TextForestDeep)
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(
+                            Pair(1.6, "Cement 1.6 kg/L"),
+                            Pair(1.5, "Epoxy 1.5 kg/L")
+                        ).forEach { (density, lbl) ->
+                            val isSel = adhesiveConfig.groutDensity == density && adhesiveConfig.customGroutDensity.isBlank()
+                            LiquidPillChip(
+                                label = lbl,
+                                isSelected = isSel,
+                                onClick = { onUpdate { it.copy(groutDensity = density, customGroutDensity = "") } },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+
+                    LiquidTextField(
+                        value = if (adhesiveConfig.customGroutDensity.isNotBlank()) adhesiveConfig.customGroutDensity else adhesiveConfig.groutDensity.toString(),
+                        onValueChange = { v ->
+                            val num = TileCalculatorEngine.parseNum(v)
+                            onUpdate { s ->
+                                s.copy(
+                                    customGroutDensity = v,
+                                    groutDensity = if (num > 0) num else s.groutDensity
+                                )
+                            }
+                        },
+                        label = "Custom grout density (kg/L):",
+                        placeholder = "1.6",
+                        suffix = "kg/L",
+                        keyboardType = KeyboardType.Decimal
+                    )
+                    Text(
+                        text = "Standard cement grout is 1.6 kg/L. Epoxy grout is usually 1.5 kg/L.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextForestMuted
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -1243,7 +1426,7 @@ private fun MaterialsSummaryCard(calc: JobCalculatedResult) {
         MaterialSummaryRow(
             icon = Icons.Outlined.Handyman,
             title = "Tile Adhesive (Cement)",
-            subtitle = "${calc.adhesiveBrandName} (${calc.floorThicknessMm.toInt()} mm bed)",
+            subtitle = "${calc.adhesiveBrandName} (Floor: ${calc.floorThicknessMm.toInt()} mm, Walls/Skirting: ${calc.wallThicknessMm.toInt()} mm bed)",
             quantity = "${calc.adhesiveBags} bags (20 kg)"
         )
 
@@ -1253,8 +1436,8 @@ private fun MaterialsSummaryCard(calc: JobCalculatedResult) {
         MaterialSummaryRow(
             icon = Icons.Outlined.CheckCircle,
             title = "Tile Grout",
-            subtitle = "Standard 5 kg bags (covers 10 m² each)",
-            quantity = "${calc.groutBags} bags (5 kg)"
+            subtitle = "${String.format(Locale.US, "%.1f", calc.totalGroutKg)} kg needed (${calc.jointDepthMm.toInt()} mm depth, ${calc.spacerSizeMm.toInt()} mm joints)",
+            quantity = "${calc.groutBags} ${if (calc.groutBags == 1) "bag" else "bags"} (${calc.groutBagSizeKg} kg)"
         )
 
         if (calc.bondingLiquidLitres > 0) {

@@ -527,6 +527,49 @@ fun AreaEditorScreen(
 
                         if (area.skirting.enabled) {
                             Spacer(modifier = Modifier.height(10.dp))
+
+                            // Skirting Bed Thickness Control
+                            Text("Skirting bed thickness:", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = TextForestDeep))
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                val skirtingThicknessPresets = listOf(
+                                    Pair(3.0, "Level 3 mm"),
+                                    Pair(6.0, "Slightly uneven 6 mm"),
+                                    Pair(10.0, "Very uneven 10 mm")
+                                )
+                                skirtingThicknessPresets.forEach { (thick, lbl) ->
+                                    val isSel = area.skirting.bedThicknessMm == thick && area.skirting.customBedThicknessMm.isBlank()
+                                    LiquidPillChip(
+                                        label = lbl,
+                                        isSelected = isSel,
+                                        onClick = {
+                                            viewModel.updateActiveArea { a ->
+                                                a.copy(skirting = a.skirting.copy(bedThicknessMm = thick, customBedThicknessMm = ""))
+                                            }
+                                        },
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(6.dp))
+                            LiquidTextField(
+                                value = if (area.skirting.customBedThicknessMm.isNotBlank()) area.skirting.customBedThicknessMm else area.skirting.bedThicknessMm.toString(),
+                                onValueChange = { v ->
+                                    val num = TileCalculatorEngine.parseNum(v)
+                                    viewModel.updateActiveArea { a ->
+                                        a.copy(skirting = a.skirting.copy(
+                                            customBedThicknessMm = v,
+                                            bedThicknessMm = if (num > 0) num else a.skirting.bedThicknessMm
+                                        ))
+                                    }
+                                },
+                                label = "Custom skirting bed thickness (mm):",
+                                placeholder = "3",
+                                suffix = "mm",
+                                keyboardType = KeyboardType.Decimal
+                            )
+
+                            Spacer(modifier = Modifier.height(10.dp))
                             Text("Skirting height:", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = TextForestDeep))
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 listOf(7.0, 10.0, 15.0).forEach { h ->

@@ -64,7 +64,8 @@ data class TileSpec(
     val isCustom: Boolean = false,
     val tilesPerBox: Int = 12,
     val wastePercent: Double = 10.0,
-    val spacerMm: Double = 3.0
+    val spacerMm: Double = 3.0,
+    val jointDepthMm: Double = 10.0
 )
 
 data class SkirtingConfig(
@@ -75,7 +76,9 @@ data class SkirtingConfig(
     val method: SkirtingMethod = SkirtingMethod.CUT_FROM_FLOOR,
     val readyMadePieceLenCm: Double = 60.0,
     val readyMadePiecesPerBox: Int = 10,
-    val finishWithEdgeStrip: Boolean = true
+    val finishWithEdgeStrip: Boolean = true,
+    val bedThicknessMm: Double = 3.0,
+    val customBedThicknessMm: String = ""
 )
 
 data class EdgeStripConfig(
@@ -158,7 +161,13 @@ data class AdhesiveConfig(
     val otherWallCoverage: Double = 5.0,
     val floorThicknessMm: Double = 5.0,
     val wallThicknessMm: Double = 3.0,
+    val customWallThicknessMm: String = "",
+    val skirtingThicknessMm: Double = 3.0,
+    val customSkirtingThicknessMm: String = "",
     val groutCoveragePerBag: Double = 10.0,
+    val groutDensity: Double = 1.6, // Default 1.6 kg/L cement-based, override e.g. 1.5 for epoxy
+    val customGroutDensity: String = "",
+    val groutBagSizeKg: Int = 5, // 2 kg or 5 kg (default 5 kg)
     val includeBondingLiquid: Boolean = false, // Switched off by default
     val bondingLiquidMode: BondingLiquidMode = BondingLiquidMode.ADDITIVE_SPLASH,
     val bondingMlPerBag: Double = 250.0, // Default 250 ml

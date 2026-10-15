@@ -194,7 +194,13 @@ class JobRepository(private val context: Context) {
             put("otherWallCov", adh.otherWallCoverage)
             put("floorThicknessMm", adh.floorThicknessMm)
             put("wallThicknessMm", adh.wallThicknessMm)
+            put("customWallThicknessMm", adh.customWallThicknessMm)
+            put("skirtingThicknessMm", adh.skirtingThicknessMm)
+            put("customSkirtingThicknessMm", adh.customSkirtingThicknessMm)
             put("groutCov", adh.groutCoveragePerBag)
+            put("groutDensity", adh.groutDensity)
+            put("customGroutDensity", adh.customGroutDensity)
+            put("groutBagSizeKg", adh.groutBagSizeKg)
             put("includeBondingLiquid", adh.includeBondingLiquid)
             put("bondingLiquidMode", adh.bondingLiquidMode.name)
             put("bondingMlPerBag", adh.bondingMlPerBag)
@@ -221,6 +227,7 @@ class JobRepository(private val context: Context) {
             put("tilesPerBox", spec.tilesPerBox)
             put("wastePercent", spec.wastePercent)
             put("spacerMm", spec.spacerMm)
+            put("jointDepthMm", spec.jointDepthMm)
         }
     }
 
@@ -285,6 +292,8 @@ class JobRepository(private val context: Context) {
             put("sk_readyMadePieceLen", sk.readyMadePieceLenCm)
             put("sk_readyMadePiecesBox", sk.readyMadePiecesPerBox)
             put("sk_finishWithEdgeStrip", sk.finishWithEdgeStrip)
+            put("sk_bedThicknessMm", sk.bedThicknessMm)
+            put("sk_customBedThicknessMm", sk.customBedThicknessMm)
 
             // Edge strip
             val es = area.edgeStrip
@@ -328,7 +337,13 @@ class JobRepository(private val context: Context) {
                 otherWallCoverage = adhObj.optDouble("otherWallCov", 5.0),
                 floorThicknessMm = adhObj.optDouble("floorThicknessMm", 5.0),
                 wallThicknessMm = adhObj.optDouble("wallThicknessMm", 3.0),
+                customWallThicknessMm = adhObj.optString("customWallThicknessMm", ""),
+                skirtingThicknessMm = adhObj.optDouble("skirtingThicknessMm", 3.0),
+                customSkirtingThicknessMm = adhObj.optString("customSkirtingThicknessMm", ""),
                 groutCoveragePerBag = adhObj.optDouble("groutCov", 10.0),
+                groutDensity = adhObj.optDouble("groutDensity", 1.6),
+                customGroutDensity = adhObj.optString("customGroutDensity", ""),
+                groutBagSizeKg = adhObj.optInt("groutBagSizeKg", 5),
                 includeBondingLiquid = adhObj.optBoolean("includeBondingLiquid", false),
                 bondingLiquidMode = bMode,
                 bondingMlPerBag = adhObj.optDouble("bondingMlPerBag", 250.0),
@@ -372,7 +387,8 @@ class JobRepository(private val context: Context) {
             isCustom = obj.optBoolean("isCustom", false),
             tilesPerBox = obj.optInt("tilesPerBox", 12),
             wastePercent = obj.optDouble("wastePercent", 10.0),
-            spacerMm = obj.optDouble("spacerMm", 3.0)
+            spacerMm = obj.optDouble("spacerMm", 3.0),
+            jointDepthMm = obj.optDouble("jointDepthMm", 10.0)
         )
     }
 
@@ -429,7 +445,9 @@ class JobRepository(private val context: Context) {
             method = skMethod,
             readyMadePieceLenCm = obj.optDouble("sk_readyMadePieceLen", 60.0),
             readyMadePiecesPerBox = obj.optInt("sk_readyMadePiecesBox", 10),
-            finishWithEdgeStrip = obj.optBoolean("sk_finishWithEdgeStrip", true)
+            finishWithEdgeStrip = obj.optBoolean("sk_finishWithEdgeStrip", true),
+            bedThicknessMm = obj.optDouble("sk_bedThicknessMm", 3.0),
+            customBedThicknessMm = obj.optString("sk_customBedThicknessMm", "")
         )
 
         val es = EdgeStripConfig(

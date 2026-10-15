@@ -262,13 +262,126 @@ class TileCalculatorUnitTest {
             )
         )
         val quoteSplash = TileCalculatorEngine.generateQuotation(jobSplash, UserProfile(), detailed = false)
-        assertTrue(quoteSplash.contains("Bonding liquid (optional): 1 litre (about 250 ml per bag of adhesive)"))
+        assertTrue(quoteSplash.contains("Bonding liquid: 1 litre (about 250 ml per bag of adhesive)"))
 
         val jobWet = jobSplash.copy(
             adhesiveConfig = jobSplash.adhesiveConfig.copy(bondingLiquidMode = BondingLiquidMode.WET_AREA_FULL)
         )
         val quoteWet = TileCalculatorEngine.generateQuotation(jobWet, UserProfile(), detailed = false)
-        assertTrue(quoteWet.contains("Bonding liquid (wet area): 20 litres (replaces all mixing water, 5 litres per bag)"))
+        assertTrue(quoteWet.contains("Bonding liquid: 20 litres (wet area: replaces all mixing water)"))
+    }
+
+    @Test
+    fun testGroutGeometricFormula() {
+        // A 16 m2 floor of 600x600 mm tile, 2 mm joint, 10 mm depth, density 1.6 needs about 1.9 kg of grout (1 bag)
+        val groutKgExact = TileCalculatorEngine.calculateSurfaceGroutKg(
+            tileLengthMm = 600.0,
+            tileWidthMm = 600.0,
+            jointWidthMm = 2.0,
+            jointDepthMm = 10.0,
+            groutDensity = 1.6,
+            tiledAreaSqM = 16.0
+        )
+        // (1200 / 360000) * 2 * 10 * 1.6 * 16 = 1.7067 kg
+        assertEquals(1.7067, groutKgExact, 0.01)
+
+        val room = AreaItem(
+            name = "Test Room",
+            type = AreaType.ROOM_FLOOR,
+            lengthInput = "4.0",
+            widthInput = "4.0",
+            skirting = SkirtingConfig(enabled = false)
+        )
+        val job = Job(
+            isTileChosen = true,
+            sharedFloorTileSpec = TileSpec(
+                sizeLabel = "60 x 60 cm",
+                lengthCm = 60.0,
+                widthCm = 60.0,
+                spacerMm = 2.0,
+                jointDepthMm = 10.0
+            ),
+            areas = listOf(room),
+            adhesiveConfig = AdhesiveConfig(
+                groutDensity = 1.6,
+                groutBagSizeKg = 5
+            )
+        )
+        val calc = TileCalculatorEngine.calculateJob(job)
+        // Needs about 1.7 - 1.9 kg of grout, requiring 1 bag (5 kg bag)
+        assertTrue(calc.totalGroutKg in 1.7..2.0)
+        assertEquals(1, calc.groutBags)
+    }
+
+    @Test
+    fun testSkirtingAdhesiveIndependentOfFloorBedThickness() {
+        // Skirting adhesive at a 3 mm bed must be calculated independently of a 12 mm floor bed.
+        // Room: 4 m x 4 m floor (16 m²), skirting: 16 m perimeter x 0.1 m height = 1.6 m².
+        val room = AreaItem(
+            name = "Room with Skirting",
+            type = AreaType.ROOM_FLOOR,
+            lengthInput = "4.0",
+            widthInput = "4.0",
+            skirting = SkirtingConfig(
+                enabled = true,
+                heightCm = 10.0,
+                bedThicknessMm = 3.0
+            )
+        )
+        val job = Job(
+            isTileChosen = true,
+            areas = listOf(room),
+            adhesiveConfig = AdhesiveConfig(
+                brand = AdhesiveBrand.EASY_GRIP,
+                floorThicknessMm = 12.0, // Floor is 12 mm
+                wallThicknessMm = 3.0,
+                skirtingThicknessMm = 3.0 // Skirting is 3 mm
+            )
+        )
+        val calc = TileCalculatorEngine.calculateJob(job)
+        val areaRes = calc.areaResults[0]
+
+        // Floor coverage at 12 mm bed: 3.5 * (5 / 12) = 1.4583 m²/bag
+        // Floor bags raw = 16 / 1.4583 = 10.97 bags
+        assertEquals(10.97, areaRes.floorAdhesiveBagsRaw, 0.05)
+
+        // Skirting coverage at 3 mm bed: 5.0 * (3 / 3) = 5.0 m²/bag (uses wall reference, NOT floor reference!)
+        // Skirting bags raw = 1.6 / 5.0 = 0.32 bags
+        assertEquals(0.32, areaRes.skirtingAdhesiveBagsRaw, 0.02)
+
+        // Total raw = 10.97 + 0.32 = 11.29 -> ceil = 12 bags
+        assertEquals(12, calc.adhesiveBags)
+        // Never apply floor's 12 mm thickness to skirting:
+        // If floor thickness were wrongly used, skirting raw would have been 1.6 / 1.4583 = 1.10 bags!
+        assertTrue(areaRes.skirtingAdhesiveBagsRaw < 0.5)
+    }
+
+    @Test
+    fun testBondingLiquidDefaultOffAndFourBagJob() {
+        // Default bonding liquid is off:
+        val defaultAdh = AdhesiveConfig()
+        assertFalse(defaultAdh.includeBondingLiquid)
+
+        // Room that needs 4 bags of adhesive (e.g. 14 m² at 5 mm bed with Easy Grip = 4 bags)
+        val room = AreaItem(name = "Room", type = AreaType.ROOM_FLOOR, lengthInput = "4.0", widthInput = "3.5", skirting = SkirtingConfig(enabled = false))
+        val jobOff = Job(isTileChosen = true, areas = listOf(room), adhesiveConfig = defaultAdh)
+        val calcOff = TileCalculatorEngine.calculateJob(jobOff)
+        assertEquals(0.0, calcOff.bondingLiquidLitres, 0.001)
+
+        // When on at 250 ml per bag gives about 1 litre for a 4-bag job:
+        val jobOn = Job(
+            isTileChosen = true,
+            areas = listOf(room),
+            adhesiveConfig = defaultAdh.copy(
+                includeBondingLiquid = true,
+                bondingMlPerBag = 250.0
+            )
+        )
+        val calcOn = TileCalculatorEngine.calculateJob(jobOn)
+        assertEquals(4, calcOn.adhesiveBags)
+        // 4 bags x 250 ml / 1000 = 1.0 litre
+        assertEquals(1.0, calcOn.bondingLiquidLitres, 0.001)
+        assertEquals("Bonding liquid: 1 litre (about 250 ml per bag of adhesive)", calcOn.bondingLiquidResultText)
     }
 
     @Test
