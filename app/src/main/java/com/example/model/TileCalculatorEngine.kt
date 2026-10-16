@@ -16,7 +16,7 @@ data class AreaCalculatedResult(
     val skirtingAreaSqM: Double,
     val totalAreaSqM: Double,
 
-    // Tiles (when tile chosen)
+    // Floor Tiles (when tile chosen)
     val isTileChosen: Boolean,
     val floorTilesOnly: Int,
     val skirtingTilesAddedToFloor: Int,
@@ -24,13 +24,17 @@ data class AreaCalculatedResult(
     val floorBoxesToBuy: Int,
     val totalFloorTilesInBoxes: Int,
     val floorSpareTiles: Int,
+    val floorTileSizeLabel: String = "60 x 60 cm",
+    val floorTilesPerBox: Int = 12,
 
-    // Separate wall tiles (if separate wall tile configured)
-    val hasSeparateWallTile: Boolean,
-    val wallTilesNeeded: Int,
-    val wallBoxesToBuy: Int,
-    val totalWallTilesInBoxes: Int,
-    val wallSpareTiles: Int,
+    // Separate wall tiles
+    val hasWallTiles: Boolean = false,
+    val wallTilesNeeded: Int = 0,
+    val wallBoxesToBuy: Int = 0,
+    val totalWallTilesInBoxes: Int = 0,
+    val wallSpareTiles: Int = 0,
+    val wallTileSizeLabel: String = "30 x 60 cm",
+    val wallTilesPerBox: Int = 8,
 
     // Skirting
     val skirtingEnabled: Boolean,
@@ -41,16 +45,20 @@ data class AreaCalculatedResult(
     val readyMadeSkirtingBoxes: Int,
     val skirtingBedThicknessMm: Double,
 
-    // Grout breakdown for this area (kg)
+    // Grout breakdown for this area (kg & bags)
     val floorGroutKg: Double,
     val wallGroutKg: Double,
     val skirtingGroutKg: Double,
     val totalGroutKg: Double,
+    val floorGroutBags: Int = 0,
+    val wallGroutBags: Int = 0,
 
-    // Adhesive bags raw
+    // Adhesive bags raw & integer bags
     val floorAdhesiveBagsRaw: Double,
     val wallAdhesiveBagsRaw: Double,
     val skirtingAdhesiveBagsRaw: Double,
+    val floorAdhesiveBags: Int = 0,
+    val wallAdhesiveBags: Int = 0,
 
     // Edge strips for this area
     val edgeStripEnabled: Boolean,
@@ -60,10 +68,17 @@ data class AreaCalculatedResult(
     val edgeStripThicknessMm: Int,
     val edgeStripPieceLengthM: Double,
 
-    // Spacers for this area
-    val spacersCount: Int,
-    val spacerSizeMm: Double
-)
+    // Spacers for this area (separate floor and wall)
+    val floorSpacersCount: Int = 0,
+    val wallSpacersCount: Int = 0,
+    val spacersCount: Int = 0,
+    val floorSpacerMm: Double = 3.0,
+    val wallSpacerMm: Double = 2.0,
+    val spacerSizeMm: Double = 3.0
+) {
+    // Backwards compatibility property
+    val hasSeparateWallTile: Boolean get() = hasWallTiles
+}
 
 data class JobCalculatedResult(
     val totalFloorAreaSqM: Double,
@@ -71,7 +86,7 @@ data class JobCalculatedResult(
     val totalSkirtingAreaSqM: Double,
     val grandTotalAreaSqM: Double,
 
-    // Tiles
+    // Floor Tiles
     val isTileChosen: Boolean,
     val totalFloorBoxes: Int,
     val totalFloorTilesInBoxes: Int,
@@ -80,8 +95,8 @@ data class JobCalculatedResult(
     val floorTileSizeLabel: String,
     val floorTilesPerBox: Int,
 
-    // Wall tiles (if separate)
-    val hasSeparateWallTiles: Boolean,
+    // Wall tiles (calculated separately from floor tiles!)
+    val hasWallTiles: Boolean,
     val totalWallBoxes: Int,
     val totalWallTilesInBoxes: Int,
     val totalWallTilesNeeded: Int,
@@ -93,8 +108,11 @@ data class JobCalculatedResult(
     val totalReadyMadeSkirtingBoxes: Int,
     val totalReadyMadeSkirtingPieces: Int,
 
-    // Adhesive
-    val adhesiveBags: Int,
+    // Adhesive (calculated separately for floor, wall, skirting)
+    val adhesiveBags: Int, // grand total
+    val floorAdhesiveBags: Int,
+    val wallAdhesiveBags: Int,
+    val skirtingAdhesiveBags: Int,
     val adhesiveBrandName: String,
     val floorThicknessMm: Double,
     val wallThicknessMm: Double,
@@ -111,16 +129,26 @@ data class JobCalculatedResult(
     val bondingLiquidMlPerBag: Double,
     val bondingLiquidResultText: String,
 
-    // Grout
-    val groutBags: Int,
+    // Grout (calculated separately for floor and walls)
+    val groutBags: Int, // grand total
+    val floorGroutBags: Int,
+    val wallGroutBags: Int,
+    val floorGroutKg: Double,
+    val wallGroutKg: Double,
     val totalGroutKg: Double,
     val groutDensity: Double,
     val groutBagSizeKg: Int,
     val jointDepthMm: Double,
+    val floorJointDepthMm: Double = 10.0,
+    val wallJointDepthMm: Double = 8.0,
 
-    // Spacers
+    // Spacers (calculated separately for floor and walls)
     val totalSpacersCount: Int,
+    val floorSpacersCount: Int,
+    val wallSpacersCount: Int,
     val spacerSizeMm: Double,
+    val floorSpacerMm: Double = 3.0,
+    val wallSpacerMm: Double = 2.0,
 
     // Edge strips
     val plasticEdgeStripLengthM: Double,
@@ -133,7 +161,10 @@ data class JobCalculatedResult(
 
     // Area results breakdown
     val areaResults: List<AreaCalculatedResult>
-)
+) {
+    // Backwards compatibility property
+    val hasSeparateWallTiles: Boolean get() = hasWallTiles
+}
 
 object TileCalculatorEngine {
 
@@ -210,11 +241,27 @@ object TileCalculatorEngine {
                 floorArea = lengthM * widthM
                 // Walls
                 if (area.bathroomWall.enabled) {
-                    val wHeight = area.bathroomWall.wallHeightM
-                    val rawWallArea = 2.0 * (lengthM + widthM) * wHeight
                     val doorOpenings = area.bathroomWall.doorCount * area.bathroomWall.doorWidthM * area.bathroomWall.doorHeightM
                     val windowOpenings = area.bathroomWall.windowCount * area.bathroomWall.windowWidthM * area.bathroomWall.windowHeightM
-                    wallArea += max(0.0, rawWallArea - (doorOpenings + windowOpenings))
+                    val grossWallArea = if (area.bathroomWall.entryMode == BathroomWallEntryMode.PER_WALL) {
+                        var g = 0.0
+                        area.bathroomWall.walls.forEach { w ->
+                            val l = unit.toMeters(parseNum(w.lengthInput))
+                            val h = unit.toMeters(parseNum(w.heightInput))
+                            g += (l * h)
+                        }
+                        if (g <= 0.0 && lengthM > 0.0) {
+                            val wHeight = if (area.bathroomWall.wallHeightM > 0) area.bathroomWall.wallHeightM else 2.4
+                            2.0 * (lengthM + widthM) * wHeight
+                        } else g
+                    } else {
+                        val inputArea = parseNum(area.bathroomWall.totalWallAreaInput)
+                        if (inputArea > 0.0) inputArea else {
+                            val wHeight = if (area.bathroomWall.wallHeightM > 0) area.bathroomWall.wallHeightM else 2.4
+                            2.0 * (lengthM + widthM) * wHeight
+                        }
+                    }
+                    wallArea += max(0.0, grossWallArea - (doorOpenings + windowOpenings))
                 }
 
                 // Bath tub
@@ -245,7 +292,12 @@ object TileCalculatorEngine {
                 var bathEdge = area.doorwayCount * doorWidthM
                 if (area.bathroomWall.enabled && !area.bathroomWall.tiledToCeiling) {
                     // top edge of wall tiles
-                    bathEdge += max(0.0, 2.0 * (lengthM + widthM) - (area.bathroomWall.doorCount * area.bathroomWall.doorWidthM))
+                    val perimeterForTopEdge = if (area.bathroomWall.entryMode == BathroomWallEntryMode.PER_WALL && area.bathroomWall.walls.isNotEmpty()) {
+                        area.bathroomWall.walls.sumOf { unit.toMeters(parseNum(it.lengthInput)) }
+                    } else {
+                        2.0 * (lengthM + widthM)
+                    }
+                    bathEdge += max(0.0, perimeterForTopEdge - (area.bathroomWall.doorCount * area.bathroomWall.doorWidthM))
                 }
                 if (area.bathroomWall.enabled) {
                     bathEdge += area.bathroomWall.windowCount * 2.0 * (area.bathroomWall.windowWidthM + area.bathroomWall.windowHeightM)
@@ -336,9 +388,23 @@ object TileCalculatorEngine {
         val totalAreaWithSkirting = floorArea + wallArea + skirtingWallAreaSqM
 
         // Tiles calculation
-        val floorTileSpec = if (job.sameTileForAllAreas) job.sharedFloorTileSpec else (area.customTileSpec ?: job.sharedFloorTileSpec)
-        val useSeparateWallTile = !job.sameTileForWallsAndSides && wallArea > 0
-        val wallTileSpec = if (useSeparateWallTile) job.sharedWallTileSpec else floorTileSpec
+        val isBathroom = area.type == AreaType.BATHROOM
+        val floorTileSpec = if (isBathroom) {
+            area.bathroomFloorTileSpec
+        } else if (job.sameTileForAllAreas) {
+            job.sharedFloorTileSpec
+        } else {
+            (area.customTileSpec ?: job.sharedFloorTileSpec)
+        }
+
+        val useSeparateWallTile = (isBathroom || !job.sameTileForWallsAndSides) && wallArea > 0
+        val wallTileSpec = if (isBathroom) {
+            area.bathroomWallTileSpec
+        } else if (useSeparateWallTile) {
+            job.sharedWallTileSpec
+        } else {
+            floorTileSpec
+        }
 
         var floorTilesOnly = 0
         var skirtingTilesAddedToFloor = 0
@@ -354,23 +420,22 @@ object TileCalculatorEngine {
 
         var readyMadePieces = 0
         var readyMadeBoxes = 0
-        var spacersCount = 0
+        var floorSpacersCount = 0
+        var wallSpacersCount = 0
 
-        if (job.isTileChosen) {
+        val tileChosen = job.isTileChosen || isBathroom
+
+        if (tileChosen) {
             val spacerM = floorTileSpec.spacerMm / 1000.0
             val effFloorTileL = (floorTileSpec.lengthCm / 100.0) + spacerM
             val effFloorTileW = (floorTileSpec.widthCm / 100.0) + spacerM
             val effFloorTileArea = max(0.0001, effFloorTileL * effFloorTileW)
 
             // Floor surface tiles
-            val rawFloorTiles = floorArea / effFloorTileArea
-            floorTilesOnly = ceil(rawFloorTiles * (1.0 + floorTileSpec.wastePercent / 100.0)).toInt()
-
-            // If walls use the SAME tile and not separate, we can add wall tiles or separate them
-            val sameTileWallTiles = if (!useSeparateWallTile && wallArea > 0) {
-                val rawWallTiles = wallArea / effFloorTileArea
-                ceil(rawWallTiles * (1.0 + floorTileSpec.wastePercent / 100.0)).toInt()
-            } else 0
+            if (floorArea > 0) {
+                val rawFloorTiles = floorArea / effFloorTileArea
+                floorTilesOnly = ceil(rawFloorTiles * (1.0 + floorTileSpec.wastePercent / 100.0)).toInt()
+            }
 
             // Skirting calculation
             if (skirtingActive && actualSkirtingLengthM > 0) {
@@ -387,14 +452,20 @@ object TileCalculatorEngine {
                 }
             }
 
+            // If walls use the SAME tile and not separate (only for non-bathroom areas)
+            val sameTileWallTiles = if (!isBathroom && !useSeparateWallTile && wallArea > 0) {
+                val rawWallTiles = wallArea / effFloorTileArea
+                ceil(rawWallTiles * (1.0 + floorTileSpec.wastePercent / 100.0)).toInt()
+            } else 0
+
             totalFloorTilesNeeded = floorTilesOnly + skirtingTilesAddedToFloor + sameTileWallTiles
             val boxCapacity = max(1, floorTileSpec.tilesPerBox)
-            floorBoxesToBuy = ceil(totalFloorTilesNeeded.toDouble() / boxCapacity).toInt()
+            floorBoxesToBuy = if (totalFloorTilesNeeded > 0) ceil(totalFloorTilesNeeded.toDouble() / boxCapacity).toInt() else 0
             totalFloorTilesInBoxes = floorBoxesToBuy * boxCapacity
             floorSpareTiles = totalFloorTilesInBoxes - totalFloorTilesNeeded
 
             // Separate wall tile calculation
-            if (useSeparateWallTile) {
+            if (useSeparateWallTile && wallArea > 0) {
                 val wallSpacerM = wallTileSpec.spacerMm / 1000.0
                 val effWallTileL = (wallTileSpec.lengthCm / 100.0) + wallSpacerM
                 val effWallTileW = (wallTileSpec.widthCm / 100.0) + wallSpacerM
@@ -402,28 +473,29 @@ object TileCalculatorEngine {
                 val rawWallTiles = wallArea / effWallTileArea
                 wallTilesNeeded = ceil(rawWallTiles * (1.0 + wallTileSpec.wastePercent / 100.0)).toInt()
                 val wallBoxCapacity = max(1, wallTileSpec.tilesPerBox)
-                wallBoxesToBuy = ceil(wallTilesNeeded.toDouble() / wallBoxCapacity).toInt()
+                wallBoxesToBuy = if (wallTilesNeeded > 0) ceil(wallTilesNeeded.toDouble() / wallBoxCapacity).toInt() else 0
                 totalWallTilesInBoxes = wallBoxesToBuy * wallBoxCapacity
                 wallSpareTiles = totalWallTilesInBoxes - wallTilesNeeded
             }
 
-            // Spacers for this area
+            // Spacers for floor
             if (floorArea > 0 && lengthM > 0 && widthM > 0) {
                 val tilesAlong = ceil(lengthM / effFloorTileL)
                 val tilesAcross = ceil(widthM / effFloorTileW)
-                val rectSpacers = ceil((tilesAlong + 1) * (tilesAcross + 1) * 1.10).toInt()
-                spacersCount += rectSpacers
+                floorSpacersCount = ceil((tilesAlong + 1) * (tilesAcross + 1) * 1.10).toInt()
             }
+            // Spacers for wall
             if (wallArea > 0) {
-                val tileAreaToUse = if (useSeparateWallTile) {
+                val effWallArea = if (useSeparateWallTile) {
                     val wSpacerM = wallTileSpec.spacerMm / 1000.0
                     ((wallTileSpec.lengthCm / 100.0) + wSpacerM) * ((wallTileSpec.widthCm / 100.0) + wSpacerM)
                 } else effFloorTileArea
-                val tilesBeforeWaste = wallArea / max(0.0001, tileAreaToUse)
-                val wallSpacers = ceil((tilesBeforeWaste + 2.0 * sqrt(tilesBeforeWaste) + 1.0) * 1.10).toInt()
-                spacersCount += wallSpacers
+                val tilesBeforeWaste = wallArea / max(0.0001, effWallArea)
+                wallSpacersCount = ceil((tilesBeforeWaste + 2.0 * sqrt(tilesBeforeWaste) + 1.0) * 1.10).toInt()
             }
         }
+
+        val totalAreaSpacers = floorSpacersCount + wallSpacersCount
 
         // Edge strip pieces for this area
         val stripPieceLen = if (area.edgeStrip.pieceLengthMeters > 0) area.edgeStrip.pieceLengthMeters else 2.5
@@ -465,6 +537,8 @@ object TileCalculatorEngine {
         val areaFloorBagsRaw = if (floorCovPerBag > 0) floorArea / floorCovPerBag else 0.0
         val areaWallBagsRaw = if (wallCovPerBag > 0) wallArea / wallCovPerBag else 0.0
         val areaSkirtingBagsRaw = if (skirtingActive && skirtingCovPerBag > 0) skirtingWallAreaSqM / skirtingCovPerBag else 0.0
+        val floorAdhBags = ceil(areaFloorBagsRaw).toInt()
+        val wallAdhBags = ceil(areaWallBagsRaw).toInt()
 
         // Grout geometric calculation for each surface in this area:
         val groutDensity = if (adhConfig.groutDensity > 0) adhConfig.groutDensity else 1.6
@@ -515,6 +589,9 @@ object TileCalculatorEngine {
         } else 0.0
 
         val areaTotalGroutKg = floorGroutKg + wallGroutKg + skirtingGroutKg
+        val groutBagSize = if (adhConfig.groutBagSizeKg > 0) adhConfig.groutBagSizeKg else 5
+        val floorGroutBags = ceil(floorGroutKg / groutBagSize.toDouble()).toInt().coerceAtLeast(if (floorGroutKg > 0) 1 else 0)
+        val wallGroutBags = ceil(wallGroutKg / groutBagSize.toDouble()).toInt().coerceAtLeast(if (wallGroutKg > 0) 1 else 0)
 
         return AreaCalculatedResult(
             areaId = area.id,
@@ -524,18 +601,22 @@ object TileCalculatorEngine {
             wallAreaSqM = wallArea,
             skirtingAreaSqM = skirtingWallAreaSqM,
             totalAreaSqM = totalAreaWithSkirting,
-            isTileChosen = job.isTileChosen,
+            isTileChosen = tileChosen,
             floorTilesOnly = floorTilesOnly,
             skirtingTilesAddedToFloor = skirtingTilesAddedToFloor,
             totalFloorTilesNeeded = totalFloorTilesNeeded,
             floorBoxesToBuy = floorBoxesToBuy,
             totalFloorTilesInBoxes = totalFloorTilesInBoxes,
             floorSpareTiles = floorSpareTiles,
-            hasSeparateWallTile = useSeparateWallTile,
+            floorTileSizeLabel = floorTileSpec.sizeLabel,
+            floorTilesPerBox = floorTileSpec.tilesPerBox,
+            hasWallTiles = (useSeparateWallTile || isBathroom) && wallArea > 0,
             wallTilesNeeded = wallTilesNeeded,
             wallBoxesToBuy = wallBoxesToBuy,
             totalWallTilesInBoxes = totalWallTilesInBoxes,
             wallSpareTiles = wallSpareTiles,
+            wallTileSizeLabel = wallTileSpec.sizeLabel,
+            wallTilesPerBox = wallTileSpec.tilesPerBox,
             skirtingEnabled = skirtingActive,
             skirtingLengthMeters = actualSkirtingLengthM,
             skirtingHeightCm = skirtingHeightCm,
@@ -547,16 +628,24 @@ object TileCalculatorEngine {
             wallGroutKg = wallGroutKg,
             skirtingGroutKg = skirtingGroutKg,
             totalGroutKg = areaTotalGroutKg,
+            floorGroutBags = floorGroutBags,
+            wallGroutBags = wallGroutBags,
             floorAdhesiveBagsRaw = areaFloorBagsRaw,
             wallAdhesiveBagsRaw = areaWallBagsRaw,
             skirtingAdhesiveBagsRaw = areaSkirtingBagsRaw,
+            floorAdhesiveBags = floorAdhBags,
+            wallAdhesiveBags = wallAdhBags,
             edgeStripEnabled = area.edgeStrip.enabled,
             edgeStripMaterial = area.edgeStrip.material,
             edgeStripLengthMeters = actualEdgeStripLengthM,
             edgeStripPieces = areaEdgePieces,
             edgeStripThicknessMm = area.edgeStrip.tileThicknessMm,
             edgeStripPieceLengthM = stripPieceLen,
-            spacersCount = spacersCount,
+            floorSpacersCount = floorSpacersCount,
+            wallSpacersCount = wallSpacersCount,
+            spacersCount = totalAreaSpacers,
+            floorSpacerMm = floorTileSpec.spacerMm,
+            wallSpacerMm = wallTileSpec.spacerMm,
             spacerSizeMm = floorTileSpec.spacerMm
         )
     }
@@ -571,7 +660,7 @@ object TileCalculatorEngine {
         var totalFloorTilesNeeded = 0
         var totalFloorTilesInBoxes = 0
 
-        var hasSeparateWallTiles = false
+        var hasWallTiles = false
         var totalWallBoxes = 0
         var totalWallTilesNeeded = 0
         var totalWallTilesInBoxes = 0
@@ -580,6 +669,8 @@ object TileCalculatorEngine {
         var totalReadyMadePieces = 0
 
         var totalSpacers = 0
+        var totalFloorSpacers = 0
+        var totalWallSpacers = 0
 
         var plasticLength = 0.0
         var metalLength = 0.0
@@ -589,6 +680,8 @@ object TileCalculatorEngine {
         var totalFloorBagsRaw = 0.0
         var totalWallBagsRaw = 0.0
         var totalSkirtingBagsRaw = 0.0
+        var totalFloorGroutKg = 0.0
+        var totalWallGroutKg = 0.0
         var totalGroutKg = 0.0
 
         areaResults.forEach { res ->
@@ -599,8 +692,8 @@ object TileCalculatorEngine {
             totalFloorTilesNeeded += res.totalFloorTilesNeeded
             totalFloorTilesInBoxes += res.totalFloorTilesInBoxes
 
-            if (res.hasSeparateWallTile) {
-                hasSeparateWallTiles = true
+            if (res.hasWallTiles) {
+                hasWallTiles = true
                 totalWallBoxes += res.wallBoxesToBuy
                 totalWallTilesNeeded += res.wallTilesNeeded
                 totalWallTilesInBoxes += res.totalWallTilesInBoxes
@@ -612,10 +705,15 @@ object TileCalculatorEngine {
             }
 
             totalSpacers += res.spacersCount
+            totalFloorSpacers += res.floorSpacersCount
+            totalWallSpacers += res.wallSpacersCount
 
             totalFloorBagsRaw += res.floorAdhesiveBagsRaw
             totalWallBagsRaw += res.wallAdhesiveBagsRaw
             totalSkirtingBagsRaw += res.skirtingAdhesiveBagsRaw
+
+            totalFloorGroutKg += res.floorGroutKg
+            totalWallGroutKg += res.wallGroutKg
             totalGroutKg += res.totalGroutKg
 
             if (res.edgeStripEnabled && res.edgeStripLengthMeters > 0) {
@@ -663,6 +761,9 @@ object TileCalculatorEngine {
         val wallCovPerBag = printedWallCov * (3.0 / chosenWallThick)
         val skirtingCovPerBag = printedWallCov * (3.0 / chosenSkirtingThick)
 
+        val floorAdhesiveBags = ceil(totalFloorBagsRaw).toInt()
+        val wallAdhesiveBags = ceil(totalWallBagsRaw).toInt()
+        val skirtingAdhesiveBags = ceil(totalSkirtingBagsRaw).toInt()
         val adhesiveBags = ceil(totalFloorBagsRaw + totalWallBagsRaw + totalSkirtingBagsRaw).toInt()
         val isBedThickWarning = chosenFloorThick > 10.0
 
@@ -679,13 +780,11 @@ object TileCalculatorEngine {
         } else {
             when (adhConfig.bondingLiquidMode) {
                 BondingLiquidMode.ADDITIVE_SPLASH -> {
-                    // Bonding liquid needed (litres) = adhesive bags x ml per bag / 1000, rounded UP to the nearest 0.25 litre
                     val rawLitres = adhesiveBags * (effectiveMlPerBag / 1000.0)
                     val rounded = ceil(rawLitres / 0.25) * 0.25
                     kotlin.math.round(rounded * 100.0) / 100.0
                 }
                 BondingLiquidMode.WET_AREA_FULL -> {
-                    // Wet area: use bonding liquid instead of all the mixing water -> adhesive bags x 5
                     adhesiveBags * 5.0
                 }
             }
@@ -700,34 +799,47 @@ object TileCalculatorEngine {
 
         // Grout bags rounded UP to bag size (2 kg or 5 kg, default 5 kg)
         val bagSize = if (adhConfig.groutBagSizeKg > 0) adhConfig.groutBagSizeKg else 5
+        val floorGroutBags = ceil(totalFloorGroutKg / bagSize.toDouble()).toInt().coerceAtLeast(if (totalFloorGroutKg > 0) 1 else 0)
+        val wallGroutBags = ceil(totalWallGroutKg / bagSize.toDouble()).toInt().coerceAtLeast(if (totalWallGroutKg > 0) 1 else 0)
         val groutBags = ceil(totalGroutKg / bagSize.toDouble()).toInt().coerceAtLeast(if (totalGroutKg > 0) 1 else 0)
 
         // Edge strip pieces: ceil(total length for that material x 1.10 / piece length)
         val plasticPieces = if (plasticLength > 0) ceil((plasticLength * 1.10) / 2.5).toInt() else 0
         val metalPieces = if (metalLength > 0) ceil((metalLength * 1.10) / 2.5).toInt() else 0
 
+        val chosenFloorTileLabel = areaResults.firstOrNull { it.floorBoxesToBuy > 0 }?.floorTileSizeLabel ?: job.sharedFloorTileSpec.sizeLabel
+        val chosenFloorTilesBox = areaResults.firstOrNull { it.floorBoxesToBuy > 0 }?.floorTilesPerBox ?: job.sharedFloorTileSpec.tilesPerBox
+        val chosenWallTileLabel = areaResults.firstOrNull { it.wallBoxesToBuy > 0 }?.wallTileSizeLabel ?: job.sharedWallTileSpec.sizeLabel
+        val chosenWallTilesBox = areaResults.firstOrNull { it.wallBoxesToBuy > 0 }?.wallTilesPerBox ?: job.sharedWallTileSpec.tilesPerBox
+        val floorJointDepth = job.sharedFloorTileSpec.jointDepthMm
+        val wallJointDepth = 8.0
+        val isJobTileChosen = job.isTileChosen || areaResults.any { it.isTileChosen && (it.floorBoxesToBuy > 0 || it.wallBoxesToBuy > 0) }
+
         return JobCalculatedResult(
             totalFloorAreaSqM = totalFloorArea,
             totalWallAreaSqM = totalWallArea,
             totalSkirtingAreaSqM = totalSkirtingArea,
             grandTotalAreaSqM = grandTotalArea,
-            isTileChosen = job.isTileChosen,
+            isTileChosen = isJobTileChosen,
             totalFloorBoxes = totalFloorBoxes,
             totalFloorTilesInBoxes = totalFloorTilesInBoxes,
             totalFloorTilesNeeded = totalFloorTilesNeeded,
             totalFloorSpareTiles = totalFloorSpare,
-            floorTileSizeLabel = job.sharedFloorTileSpec.sizeLabel,
-            floorTilesPerBox = job.sharedFloorTileSpec.tilesPerBox,
-            hasSeparateWallTiles = hasSeparateWallTiles,
+            floorTileSizeLabel = chosenFloorTileLabel,
+            floorTilesPerBox = chosenFloorTilesBox,
+            hasWallTiles = hasWallTiles,
             totalWallBoxes = totalWallBoxes,
             totalWallTilesInBoxes = totalWallTilesInBoxes,
             totalWallTilesNeeded = totalWallTilesNeeded,
             totalWallSpareTiles = totalWallSpare,
-            wallTileSizeLabel = job.sharedWallTileSpec.sizeLabel,
-            wallTilesPerBox = job.sharedWallTileSpec.tilesPerBox,
+            wallTileSizeLabel = chosenWallTileLabel,
+            wallTilesPerBox = chosenWallTilesBox,
             totalReadyMadeSkirtingBoxes = totalReadyMadeBoxes,
             totalReadyMadeSkirtingPieces = totalReadyMadePieces,
             adhesiveBags = adhesiveBags,
+            floorAdhesiveBags = floorAdhesiveBags,
+            wallAdhesiveBags = wallAdhesiveBags,
+            skirtingAdhesiveBags = skirtingAdhesiveBags,
             adhesiveBrandName = adhConfig.brand.displayName,
             floorThicknessMm = chosenFloorThick,
             wallThicknessMm = chosenWallThick,
@@ -744,12 +856,22 @@ object TileCalculatorEngine {
             bondingLiquidMlPerBag = effectiveMlPerBag,
             bondingLiquidResultText = bondingResultText,
             groutBags = groutBags,
+            floorGroutBags = floorGroutBags,
+            wallGroutBags = wallGroutBags,
+            floorGroutKg = totalFloorGroutKg,
+            wallGroutKg = totalWallGroutKg,
             totalGroutKg = totalGroutKg,
             groutDensity = adhConfig.groutDensity,
             groutBagSizeKg = bagSize,
             jointDepthMm = job.sharedFloorTileSpec.jointDepthMm,
+            floorJointDepthMm = floorJointDepth,
+            wallJointDepthMm = wallJointDepth,
             totalSpacersCount = totalSpacers,
+            floorSpacersCount = totalFloorSpacers,
+            wallSpacersCount = totalWallSpacers,
             spacerSizeMm = job.sharedFloorTileSpec.spacerMm,
+            floorSpacerMm = areaResults.firstOrNull()?.floorSpacerMm ?: job.sharedFloorTileSpec.spacerMm,
+            wallSpacerMm = areaResults.firstOrNull { it.hasWallTiles }?.wallSpacerMm ?: 2.0,
             plasticEdgeStripLengthM = plasticLength,
             plasticEdgeStripPieces = plasticPieces,
             plasticTileThicknessMm = plasticThickness,
@@ -796,9 +918,15 @@ object TileCalculatorEngine {
                         }
                     }
                     AreaType.BATHROOM -> {
-                        sb.append("Floor size: ${area.lengthInput} m x ${area.widthInput} m = ${String.format(Locale.getDefault(), "%.2f", res?.floorAreaSqM ?: 0.0)} m2\n")
-                        if (area.bathroomWall.enabled) {
-                            sb.append("Wall tiles: ${area.bathroomWall.wallHeightM} m high (walls tiled area: ${String.format(Locale.getDefault(), "%.2f", res?.wallAreaSqM ?: 0.0)} m2)\n")
+                        sb.append("Floor: ${area.lengthInput} m x ${area.widthInput} m = ${String.format(Locale.getDefault(), "%.2f", res?.floorAreaSqM ?: 0.0)} m2\n")
+                        if (res != null && res.floorBoxesToBuy > 0) {
+                            sb.append("Floor tiles needed (${res.floorTileSizeLabel}): ${res.totalFloorTilesNeeded} tiles (${res.floorBoxesToBuy} boxes, ${res.floorSpareTiles} spare)\n")
+                        }
+                        if (area.bathroomWall.enabled && (res?.wallAreaSqM ?: 0.0) > 0) {
+                            sb.append("Walls: ${String.format(Locale.getDefault(), "%.2f", res?.wallAreaSqM ?: 0.0)} m2\n")
+                            if (res != null && res.wallBoxesToBuy > 0) {
+                                sb.append("Wall tiles needed (${res.wallTileSizeLabel}): ${res.wallTilesNeeded} tiles (${res.wallBoxesToBuy} boxes, ${res.wallSpareTiles} spare)\n")
+                            }
                         }
                         if (area.bathTub.enabled) {
                             sb.append("Bath tub: built-in tiled tub (${area.bathTub.lengthM} m x ${area.bathTub.widthM} m x ${area.bathTub.heightM} m)\n")
@@ -816,15 +944,13 @@ object TileCalculatorEngine {
                 }
 
                 if (res != null) {
-                    if (res.isTileChosen) {
-                        sb.append("Tile: ${job.sharedFloorTileSpec.sizeLabel}, ${job.sharedFloorTileSpec.tilesPerBox} tiles per box, spacers ${res.spacerSizeMm.toInt()} mm\n")
+                    if (res.isTileChosen && area.type != AreaType.BATHROOM) {
+                        sb.append("Tile: ${res.floorTileSizeLabel}, ${res.floorTilesPerBox} tiles per box, spacers ${res.spacerSizeMm.toInt()} mm\n")
                         if (res.skirtingTilesAddedToFloor > 0) {
                             sb.append("Tiles needed: ${res.totalFloorTilesNeeded} (${res.floorTilesOnly} for the floor + ${res.skirtingTilesAddedToFloor} cut for the skirting, includes ${job.sharedFloorTileSpec.wastePercent.toInt()}% extra for cuts)\n")
                         } else {
                             sb.append("Tiles needed: ${res.totalFloorTilesNeeded} (includes ${job.sharedFloorTileSpec.wastePercent.toInt()}% extra for cuts)\n")
                         }
-                    } else {
-                        sb.append("Tile: To be chosen at the shop\n")
                     }
 
                     if (res.skirtingEnabled && res.skirtingLengthMeters > 0) {
@@ -848,9 +974,11 @@ object TileCalculatorEngine {
         // MATERIALS TO BUY Section
         sb.append("MATERIALS TO BUY\n")
         if (calc.isTileChosen) {
-            sb.append("Tiles: ${calc.totalFloorBoxes} boxes (${calc.totalFloorTilesInBoxes} tiles, ${calc.totalFloorSpareTiles} spare)\n")
-            if (calc.hasSeparateWallTiles) {
-                sb.append("Wall tiles: ${calc.totalWallBoxes} boxes (${calc.totalWallTilesInBoxes} tiles, ${calc.totalWallSpareTiles} spare)\n")
+            if (calc.totalFloorBoxes > 0) {
+                sb.append("Floor tiles needed: ${calc.totalFloorBoxes} boxes (${calc.totalFloorTilesInBoxes} tiles, ${calc.totalFloorSpareTiles} spare)\n")
+            }
+            if (calc.hasWallTiles && calc.totalWallBoxes > 0) {
+                sb.append("Wall tiles needed: ${calc.totalWallBoxes} boxes (${calc.totalWallTilesInBoxes} tiles, ${calc.totalWallSpareTiles} spare)\n")
             }
         } else {
             sb.append("Tiles: Area measured (${String.format(Locale.getDefault(), "%.2f", calc.grandTotalAreaSqM)} m2 total). Choose tile at shop for box count.\n")
@@ -860,13 +988,23 @@ object TileCalculatorEngine {
             sb.append("Skirting tiles: ${calc.totalReadyMadeSkirtingBoxes} boxes (${calc.totalReadyMadeSkirtingPieces} pieces)\n")
         }
 
-        sb.append("Tile adhesive (${calc.adhesiveBrandName}): ${calc.adhesiveBags} bags (Floor bed ${calc.floorThicknessMm.toInt()} mm, Walls bed ${calc.wallThicknessMm.toInt()} mm, Skirting bed ${calc.skirtingThicknessMm.toInt()} mm)\n")
-        sb.append("Tile grout: ${calc.groutBags} ${if (calc.groutBags == 1) "bag" else "bags"} (${calc.groutBagSizeKg} kg each, ${String.format(Locale.US, "%.1f", calc.totalGroutKg)} kg total at ${calc.groutDensity} density)\n")
+        if (calc.hasWallTiles && calc.totalFloorAreaSqM > 0) {
+            sb.append("Tile adhesive (${calc.adhesiveBrandName}): ${calc.adhesiveBags} bags (Floor: ${calc.floorAdhesiveBags} bags at ${calc.floorThicknessMm.toInt()} mm bed, Walls: ${calc.wallAdhesiveBags} bags at ${calc.wallThicknessMm.toInt()} mm bed)\n")
+            sb.append("Tile grout: ${calc.groutBags} ${if (calc.groutBags == 1) "bag" else "bags"} (${calc.groutBagSizeKg} kg each, ${String.format(Locale.US, "%.1f", calc.totalGroutKg)} kg total) [Floor: ${String.format(Locale.US, "%.1f", calc.floorGroutKg)} kg, Walls: ${String.format(Locale.US, "%.1f", calc.wallGroutKg)} kg]\n")
+        } else {
+            sb.append("Tile adhesive (${calc.adhesiveBrandName}): ${calc.adhesiveBags} bags (Floor bed ${calc.floorThicknessMm.toInt()} mm, Walls bed ${calc.wallThicknessMm.toInt()} mm, Skirting bed ${calc.skirtingThicknessMm.toInt()} mm)\n")
+            sb.append("Tile grout: ${calc.groutBags} ${if (calc.groutBags == 1) "bag" else "bags"} (${calc.groutBagSizeKg} kg each, ${String.format(Locale.US, "%.1f", calc.totalGroutKg)} kg total at ${calc.groutDensity} density)\n")
+        }
+
         if (calc.bondingLiquidLitres > 0) {
             sb.append("${calc.bondingLiquidResultText}\n")
         }
         if (calc.isTileChosen && calc.totalSpacersCount > 0) {
-            sb.append("Tile spacers (${calc.spacerSizeMm.toInt()} mm): ${calc.totalSpacersCount} pieces\n")
+            if (calc.hasWallTiles && calc.wallSpacersCount > 0) {
+                sb.append("Tile spacers: ${calc.totalSpacersCount} pieces [Floor (${calc.floorSpacerMm.toInt()} mm): ${calc.floorSpacersCount} pcs, Walls (${calc.wallSpacerMm.toInt()} mm): ${calc.wallSpacersCount} pcs]\n")
+            } else {
+                sb.append("Tile spacers (${calc.spacerSizeMm.toInt()} mm): ${calc.totalSpacersCount} pieces\n")
+            }
         }
         if (calc.plasticEdgeStripPieces > 0) {
             sb.append("Plastic edge strips (${calc.plasticTileThicknessMm} mm, 2.5 m long): ${calc.plasticEdgeStripPieces} pieces\n")

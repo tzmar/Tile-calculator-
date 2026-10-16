@@ -8,6 +8,7 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.UUID
 
 class JobRepository(private val context: Context) {
 
@@ -245,6 +246,19 @@ class JobRepository(private val context: Context) {
             // Bathroom wall
             val bw = area.bathroomWall
             put("bw_enabled", bw.enabled)
+            put("bw_entryMode", bw.entryMode.name)
+            val wallsArr = org.json.JSONArray()
+            bw.walls.forEach { w ->
+                val wObj = JSONObject().apply {
+                    put("id", w.id)
+                    put("name", w.name)
+                    put("lengthInput", w.lengthInput)
+                    put("heightInput", w.heightInput)
+                }
+                wallsArr.put(wObj)
+            }
+            put("bw_walls", wallsArr)
+            put("bw_totalWallAreaInput", bw.totalWallAreaInput)
             put("bw_height", bw.wallHeightM)
             put("bw_tiledToCeiling", bw.tiledToCeiling)
             put("bw_doorCount", bw.doorCount)
@@ -253,6 +267,10 @@ class JobRepository(private val context: Context) {
             put("bw_windowCount", bw.windowCount)
             put("bw_windowWidth", bw.windowWidthM)
             put("bw_windowHeight", bw.windowHeightM)
+
+            // Bathroom tile specs
+            put("bathroomFloorTileSpec", serializeTileSpec(area.bathroomFloorTileSpec))
+            put("bathroomWallTileSpec", serializeTileSpec(area.bathroomWallTileSpec))
 
             // Bath tub
             val bt = area.bathTub
@@ -411,17 +429,70 @@ class JobRepository(private val context: Context) {
             EdgeStripMaterial.PLASTIC
         }
 
+        val bwEntryMode = try {
+            BathroomWallEntryMode.valueOf(obj.optString("bw_entryMode", BathroomWallEntryMode.PER_WALL.name))
+        } catch (e: Exception) {
+            BathroomWallEntryMode.PER_WALL
+        }
+        val wallsList = mutableListOf<WallDimension>()
+        if (obj.has("bw_walls")) {
+            val arr = obj.optJSONArray("bw_walls")
+            if (arr != null) {
+                for (i in 0 until arr.length()) {
+                    val wObj = arr.optJSONObject(i)
+                    if (wObj != null) {
+                        wallsList.add(
+                            WallDimension(
+                                id = wObj.optString("id", UUID.randomUUID().toString()),
+                                name = wObj.optString("name", "Wall ${i + 1}"),
+                                lengthInput = wObj.optString("lengthInput", "4.0"),
+                                heightInput = wObj.optString("heightInput", "2.4")
+                            )
+                        )
+                    }
+                }
+            }
+        }
+        if (wallsList.isEmpty()) {
+            val defH = obj.optDouble("bw_height", 2.4).toString()
+            val lIn = obj.optString("lengthInput", "4.0")
+            val wIn = obj.optString("widthInput", "3.0")
+            wallsList.addAll(
+                listOf(
+                    WallDimension(name = "Wall 1 (Front)", lengthInput = lIn, heightInput = defH),
+                    WallDimension(name = "Wall 2 (Back)", lengthInput = lIn, heightInput = defH),
+                    WallDimension(name = "Wall 3 (Left)", lengthInput = wIn, heightInput = defH),
+                    WallDimension(name = "Wall 4 (Right)", lengthInput = wIn, heightInput = defH)
+                )
+            )
+        }
+
         val bw = BathroomWallConfig(
-            enabled = obj.optBoolean("bw_enabled", false),
-            wallHeightM = obj.optDouble("bw_height", 2.1),
+            enabled = obj.optBoolean("bw_enabled", true),
+            entryMode = bwEntryMode,
+            walls = wallsList,
+            totalWallAreaInput = obj.optString("bw_totalWallAreaInput", ""),
+            wallHeightM = obj.optDouble("bw_height", 2.4),
             tiledToCeiling = obj.optBoolean("bw_tiledToCeiling", false),
             doorCount = obj.optInt("bw_doorCount", 1),
             doorWidthM = obj.optDouble("bw_doorWidth", 0.8),
             doorHeightM = obj.optDouble("bw_doorHeight", 2.0),
-            windowCount = obj.optInt("bw_windowCount", 0),
+            windowCount = obj.optInt("bw_windowCount", 1),
             windowWidthM = obj.optDouble("bw_windowWidth", 0.6),
             windowHeightM = obj.optDouble("bw_windowHeight", 0.6)
         )
+
+        val bathFloorSpec = if (obj.has("bathroomFloorTileSpec")) {
+            deserializeTileSpec(obj.optJSONObject("bathroomFloorTileSpec"))
+        } else {
+            TileSpec(sizeLabel = "60 x 60 cm", lengthCm = 60.0, widthCm = 60.0, tilesPerBox = 12, spacerMm = 3.0, jointDepthMm = 10.0)
+        }
+
+        val bathWallSpec = if (obj.has("bathroomWallTileSpec")) {
+            deserializeTileSpec(obj.optJSONObject("bathroomWallTileSpec"))
+        } else {
+            TileSpec(sizeLabel = "30 x 60 cm", lengthCm = 60.0, widthCm = 30.0, tilesPerBox = 8, spacerMm = 2.0, jointDepthMm = 8.0)
+        }
 
         val bt = BathTubConfig(
             enabled = obj.optBoolean("bt_enabled", false),
@@ -471,6 +542,8 @@ class JobRepository(private val context: Context) {
             doorwayWidthInput = obj.optString("doorwayWidthInput", "0.9"),
             bathroomWall = bw,
             bathTub = bt,
+            bathroomFloorTileSpec = bathFloorSpec,
+            bathroomWallTileSpec = bathWallSpec,
             verandaRaised = obj.optBoolean("v_raised", true),
             verandaRaisedHeightInput = obj.optString("v_raisedHeight", "0.3"),
             verandaSideFront = obj.optBoolean("v_front", true),

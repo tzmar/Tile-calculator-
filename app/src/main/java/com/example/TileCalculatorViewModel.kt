@@ -284,6 +284,9 @@ class TileCalculatorViewModel(application: Application) : AndroidViewModel(appli
             skirting = SkirtingConfig(
                 enabled = type == AreaType.ROOM_FLOOR
             ),
+            bathroomWall = BathroomWallConfig(
+                enabled = type == AreaType.BATHROOM
+            ),
             edgeStrip = EdgeStripConfig(
                 enabled = true,
                 material = if (type == AreaType.VERANDA) EdgeStripMaterial.METAL else EdgeStripMaterial.PLASTIC

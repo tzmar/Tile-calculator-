@@ -103,14 +103,34 @@ data class BathTubConfig(
     val hollowWidthM: Double = 0.55
 )
 
+enum class BathroomWallEntryMode(val label: String) {
+    PER_WALL("Each wall (length & height)"),
+    TOTAL_AREA("Total wall area")
+}
+
+data class WallDimension(
+    val id: String = UUID.randomUUID().toString(),
+    val name: String = "Wall",
+    val lengthInput: String = "4.0",
+    val heightInput: String = "2.4"
+)
+
 data class BathroomWallConfig(
     val enabled: Boolean = false,
-    val wallHeightM: Double = 2.1,
+    val entryMode: BathroomWallEntryMode = BathroomWallEntryMode.PER_WALL,
+    val walls: List<WallDimension> = listOf(
+        WallDimension(name = "Wall 1 (Front)", lengthInput = "4.0", heightInput = "2.4"),
+        WallDimension(name = "Wall 2 (Back)", lengthInput = "4.0", heightInput = "2.4"),
+        WallDimension(name = "Wall 3 (Left)", lengthInput = "3.0", heightInput = "2.4"),
+        WallDimension(name = "Wall 4 (Right)", lengthInput = "3.0", heightInput = "2.4")
+    ),
+    val totalWallAreaInput: String = "",
+    val wallHeightM: Double = 2.4,
     val tiledToCeiling: Boolean = false,
     val doorCount: Int = 1,
     val doorWidthM: Double = 0.8,
     val doorHeightM: Double = 2.0,
-    val windowCount: Int = 0,
+    val windowCount: Int = 1,
     val windowWidthM: Double = 0.6,
     val windowHeightM: Double = 0.6
 )
@@ -132,6 +152,8 @@ data class AreaItem(
     // Bathroom specifics
     val bathroomWall: BathroomWallConfig = BathroomWallConfig(),
     val bathTub: BathTubConfig = BathTubConfig(),
+    val bathroomFloorTileSpec: TileSpec = TileSpec(sizeLabel = "60 x 60 cm", lengthCm = 60.0, widthCm = 60.0, tilesPerBox = 12, spacerMm = 3.0, jointDepthMm = 10.0),
+    val bathroomWallTileSpec: TileSpec = TileSpec(sizeLabel = "30 x 60 cm", lengthCm = 60.0, widthCm = 30.0, tilesPerBox = 8, spacerMm = 2.0, jointDepthMm = 8.0),
 
     // Veranda specifics
     val verandaRaised: Boolean = true,

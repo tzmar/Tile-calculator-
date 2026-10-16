@@ -186,102 +186,104 @@ fun AreaEditorScreen(
                 }
             }
 
-            // Dimensions Card
-            item {
-                LiquidGlassCard(modifier = Modifier.fillMaxWidth()) {
-                    LiquidSectionHeader(
-                        title = "Measurements (${unit.symbol})",
-                        helper = "Every number field accepts dot or comma (3.5 or 3,5)"
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    if (area.type == AreaType.WALL_ONLY) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Box(modifier = Modifier.weight(1f)) {
-                                LiquidTextField(
-                                    value = area.wallOnlyLengthInput,
-                                    onValueChange = { viewModel.updateActiveArea { a -> a.copy(wallOnlyLengthInput = it) } },
-                                    label = "Wall length",
-                                    suffix = unit.symbol,
-                                    keyboardType = KeyboardType.Decimal,
-                                    testTag = "wall_length_input"
-                                )
-                            }
-                            Box(modifier = Modifier.weight(1f)) {
-                                LiquidTextField(
-                                    value = area.wallOnlyHeightInput,
-                                    onValueChange = { viewModel.updateActiveArea { a -> a.copy(wallOnlyHeightInput = it) } },
-                                    label = "Wall height",
-                                    suffix = unit.symbol,
-                                    keyboardType = KeyboardType.Decimal,
-                                    testTag = "wall_height_input"
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        LiquidTextField(
-                            value = area.wallOnlyOpeningsAreaInput,
-                            onValueChange = { viewModel.updateActiveArea { a -> a.copy(wallOnlyOpeningsAreaInput = it) } },
-                            label = "Openings to subtract (m²)",
-                            placeholder = "0.0",
-                            suffix = "m²",
-                            keyboardType = KeyboardType.Decimal
+            // Dimensions Card for Non-Bathroom Areas
+            if (area.type != AreaType.BATHROOM) {
+                item {
+                    LiquidGlassCard(modifier = Modifier.fillMaxWidth()) {
+                        LiquidSectionHeader(
+                            title = "Measurements (${unit.symbol})",
+                            helper = "Every number field accepts dot or comma (3.5 or 3,5)"
                         )
-                    } else {
-                        // Room floor / Bathroom / Veranda base dimensions
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Box(modifier = Modifier.weight(1f)) {
-                                LiquidTextField(
-                                    value = area.lengthInput,
-                                    onValueChange = { viewModel.updateActiveArea { a -> a.copy(lengthInput = it) } },
-                                    label = "Length",
-                                    suffix = unit.symbol,
-                                    keyboardType = KeyboardType.Decimal,
-                                    testTag = "room_length_input"
-                                )
-                            }
-                            Box(modifier = Modifier.weight(1f)) {
-                                LiquidTextField(
-                                    value = area.widthInput,
-                                    onValueChange = { viewModel.updateActiveArea { a -> a.copy(widthInput = it) } },
-                                    label = "Width",
-                                    suffix = unit.symbol,
-                                    keyboardType = KeyboardType.Decimal,
-                                    testTag = "room_width_input"
-                                )
-                            }
-                        }
+                        Spacer(modifier = Modifier.height(10.dp))
 
-                        if (area.type == AreaType.ROOM_FLOOR || area.type == AreaType.BATHROOM) {
-                            Spacer(modifier = Modifier.height(10.dp))
-                            LiquidSectionHeader(
-                                title = "Doorways",
-                                helper = "Subtracts door openings from skirting and trims"
-                            )
-                            Spacer(modifier = Modifier.height(6.dp))
+                        if (area.type == AreaType.WALL_ONLY) {
                             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                 Box(modifier = Modifier.weight(1f)) {
                                     LiquidTextField(
-                                        value = area.doorwayCount.toString(),
-                                        onValueChange = {
-                                            val c = it.trim().toIntOrNull() ?: 0
-                                            viewModel.updateActiveArea { a -> a.copy(doorwayCount = c) }
-                                        },
-                                        label = "Number of doors",
-                                        placeholder = "1",
-                                        keyboardType = KeyboardType.Number
+                                        value = area.wallOnlyLengthInput,
+                                        onValueChange = { viewModel.updateActiveArea { a -> a.copy(wallOnlyLengthInput = it) } },
+                                        label = "Wall length",
+                                        suffix = unit.symbol,
+                                        keyboardType = KeyboardType.Decimal,
+                                        testTag = "wall_length_input"
                                     )
                                 }
                                 Box(modifier = Modifier.weight(1f)) {
                                     LiquidTextField(
-                                        value = area.doorwayWidthInput,
-                                        onValueChange = { viewModel.updateActiveArea { a -> a.copy(doorwayWidthInput = it) } },
-                                        label = "Door width",
+                                        value = area.wallOnlyHeightInput,
+                                        onValueChange = { viewModel.updateActiveArea { a -> a.copy(wallOnlyHeightInput = it) } },
+                                        label = "Wall height",
                                         suffix = unit.symbol,
-                                        keyboardType = KeyboardType.Decimal
+                                        keyboardType = KeyboardType.Decimal,
+                                        testTag = "wall_height_input"
                                     )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            LiquidTextField(
+                                value = area.wallOnlyOpeningsAreaInput,
+                                onValueChange = { viewModel.updateActiveArea { a -> a.copy(wallOnlyOpeningsAreaInput = it) } },
+                                label = "Openings to subtract (m²)",
+                                placeholder = "0.0",
+                                suffix = "m²",
+                                keyboardType = KeyboardType.Decimal
+                            )
+                        } else {
+                            // Room floor / Veranda base dimensions
+                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Box(modifier = Modifier.weight(1f)) {
+                                    LiquidTextField(
+                                        value = area.lengthInput,
+                                        onValueChange = { viewModel.updateActiveArea { a -> a.copy(lengthInput = it) } },
+                                        label = "Length",
+                                        suffix = unit.symbol,
+                                        keyboardType = KeyboardType.Decimal,
+                                        testTag = "room_length_input"
+                                    )
+                                }
+                                Box(modifier = Modifier.weight(1f)) {
+                                    LiquidTextField(
+                                        value = area.widthInput,
+                                        onValueChange = { viewModel.updateActiveArea { a -> a.copy(widthInput = it) } },
+                                        label = "Width",
+                                        suffix = unit.symbol,
+                                        keyboardType = KeyboardType.Decimal,
+                                        testTag = "room_width_input"
+                                    )
+                                }
+                            }
+
+                            if (area.type == AreaType.ROOM_FLOOR) {
+                                Spacer(modifier = Modifier.height(10.dp))
+                                LiquidSectionHeader(
+                                    title = "Doorways",
+                                    helper = "Subtracts door openings from skirting and trims"
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    Box(modifier = Modifier.weight(1f)) {
+                                        LiquidTextField(
+                                            value = area.doorwayCount.toString(),
+                                            onValueChange = {
+                                                val c = it.trim().toIntOrNull() ?: 0
+                                                viewModel.updateActiveArea { a -> a.copy(doorwayCount = c) }
+                                            },
+                                            label = "Number of doors",
+                                            placeholder = "1",
+                                            keyboardType = KeyboardType.Number
+                                        )
+                                    }
+                                    Box(modifier = Modifier.weight(1f)) {
+                                        LiquidTextField(
+                                            value = area.doorwayWidthInput,
+                                            onValueChange = { viewModel.updateActiveArea { a -> a.copy(doorwayWidthInput = it) } },
+                                            label = "Door width",
+                                            suffix = unit.symbol,
+                                            keyboardType = KeyboardType.Decimal
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -289,9 +291,89 @@ fun AreaEditorScreen(
                 }
             }
 
-            // BATHROOM SPECIFIC SECTIONS
+            // BATHROOM SPECIFIC: 1. FLOOR TILES SECTION
             if (area.type == AreaType.BATHROOM) {
-                // Tiled Walls
+                item {
+                    LiquidGlassCard(modifier = Modifier.fillMaxWidth()) {
+                        LiquidSectionHeader(
+                            title = "Floor Tiles",
+                            helper = "Enter floor dimensions and pick floor tile size"
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Box(modifier = Modifier.weight(1f)) {
+                                LiquidTextField(
+                                    value = area.lengthInput,
+                                    onValueChange = { viewModel.updateActiveArea { a -> a.copy(lengthInput = it) } },
+                                    label = "Floor length",
+                                    suffix = unit.symbol,
+                                    keyboardType = KeyboardType.Decimal,
+                                    testTag = "bathroom_floor_length_input"
+                                )
+                            }
+                            Box(modifier = Modifier.weight(1f)) {
+                                LiquidTextField(
+                                    value = area.widthInput,
+                                    onValueChange = { viewModel.updateActiveArea { a -> a.copy(widthInput = it) } },
+                                    label = "Floor width",
+                                    suffix = unit.symbol,
+                                    keyboardType = KeyboardType.Decimal,
+                                    testTag = "bathroom_floor_width_input"
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Box(modifier = Modifier.weight(1f)) {
+                                LiquidTextField(
+                                    value = area.doorwayCount.toString(),
+                                    onValueChange = {
+                                        val c = it.trim().toIntOrNull() ?: 0
+                                        viewModel.updateActiveArea { a -> a.copy(doorwayCount = c) }
+                                    },
+                                    label = "Number of doors",
+                                    placeholder = "1",
+                                    keyboardType = KeyboardType.Number
+                                )
+                            }
+                            Box(modifier = Modifier.weight(1f)) {
+                                LiquidTextField(
+                                    value = area.doorwayWidthInput,
+                                    onValueChange = { viewModel.updateActiveArea { a -> a.copy(doorwayWidthInput = it) } },
+                                    label = "Door width",
+                                    suffix = unit.symbol,
+                                    keyboardType = KeyboardType.Decimal
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+                        HorizontalDivider(color = LiquidGrassPale, thickness = 1.dp)
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Floor tile size picker
+                        TileSpecInlineEditor(
+                            title = "Floor tile size:",
+                            spec = area.bathroomFloorTileSpec,
+                            presets = listOf(
+                                Pair("30 x 30 cm", Pair(30.0, 30.0)),
+                                Pair("40 x 40 cm", Pair(40.0, 40.0)),
+                                Pair("60 x 60 cm", Pair(60.0, 60.0)),
+                                Pair("60 x 120 cm", Pair(60.0, 120.0)),
+                                Pair("80 x 80 cm", Pair(80.0, 80.0)),
+                                Pair("Custom size", Pair(0.0, 0.0))
+                            ),
+                            onUpdate = { updated ->
+                                viewModel.updateActiveArea { a -> a.copy(bathroomFloorTileSpec = updated) }
+                            },
+                            testTagPrefix = "bath_floor"
+                        )
+                    }
+                }
+
+                // BATHROOM SPECIFIC: 2. WALL TILES SECTION
                 item {
                     LiquidGlassCard(modifier = Modifier.fillMaxWidth()) {
                         Row(
@@ -300,8 +382,8 @@ fun AreaEditorScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             LiquidSectionHeader(
-                                title = "Tile the walls too?",
-                                helper = "Includes bathroom walls around perimeter"
+                                title = "Wall Tiles",
+                                helper = "Wall length & height, or total wall area"
                             )
                             Switch(
                                 checked = area.bathroomWall.enabled,
@@ -310,23 +392,239 @@ fun AreaEditorScreen(
                                         a.copy(bathroomWall = a.bathroomWall.copy(enabled = en))
                                     }
                                 },
-                                colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = LiquidGrassPrimary)
+                                colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = LiquidGrassPrimary),
+                                modifier = Modifier.testTag("bathroom_tile_walls_switch")
                             )
                         }
 
                         if (area.bathroomWall.enabled) {
-                            Spacer(modifier = Modifier.height(10.dp))
-                            LiquidTextField(
-                                value = area.bathroomWall.wallHeightM.toString(),
-                                onValueChange = {
-                                    val v = TileCalculatorEngine.parseNum(it)
-                                    viewModel.updateActiveArea { a -> a.copy(bathroomWall = a.bathroomWall.copy(wallHeightM = v)) }
-                                },
-                                label = "Wall height (m)",
-                                suffix = "m",
-                                keyboardType = KeyboardType.Decimal
-                            )
+                            Spacer(modifier = Modifier.height(12.dp))
 
+                            // Mode selection: Each wall vs Total wall area
+                            Text(
+                                text = "Wall entry method:",
+                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = TextForestDeep)
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                BathroomWallEntryMode.values().forEach { mode ->
+                                    LiquidPillChip(
+                                        label = mode.label,
+                                        isSelected = area.bathroomWall.entryMode == mode,
+                                        onClick = {
+                                            viewModel.updateActiveArea { a ->
+                                                a.copy(bathroomWall = a.bathroomWall.copy(entryMode = mode))
+                                            }
+                                        },
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            if (area.bathroomWall.entryMode == BathroomWallEntryMode.PER_WALL) {
+                                Text(
+                                    text = "Walls (${area.bathroomWall.walls.size} walls):",
+                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = TextForestDeep)
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+
+                                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    area.bathroomWall.walls.forEachIndexed { idx, wall ->
+                                        Surface(
+                                            color = Color.White.copy(alpha = 0.5f),
+                                            shape = RoundedCornerShape(12.dp),
+                                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x20059669)),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Column(modifier = Modifier.padding(10.dp)) {
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Text(
+                                                        text = wall.name,
+                                                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold, color = TextForestDeep)
+                                                    )
+                                                    if (area.bathroomWall.walls.size > 1) {
+                                                        IconButton(
+                                                            onClick = {
+                                                                viewModel.updateActiveArea { a ->
+                                                                    val updatedList = a.bathroomWall.walls.filterIndexed { i, _ -> i != idx }
+                                                                    a.copy(bathroomWall = a.bathroomWall.copy(walls = updatedList))
+                                                                }
+                                                            },
+                                                            modifier = Modifier.size(24.dp)
+                                                        ) {
+                                                            Icon(
+                                                                Icons.Filled.Close,
+                                                                contentDescription = "Remove wall",
+                                                                tint = MaterialTheme.colorScheme.error,
+                                                                modifier = Modifier.size(16.dp)
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                                Spacer(modifier = Modifier.height(6.dp))
+                                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                    Box(modifier = Modifier.weight(1f)) {
+                                                        LiquidTextField(
+                                                            value = wall.lengthInput,
+                                                            onValueChange = { newLen ->
+                                                                viewModel.updateActiveArea { a ->
+                                                                    val updated = a.bathroomWall.walls.toMutableList()
+                                                                    updated[idx] = updated[idx].copy(lengthInput = newLen)
+                                                                    a.copy(bathroomWall = a.bathroomWall.copy(walls = updated))
+                                                                }
+                                                            },
+                                                            label = "Length",
+                                                            suffix = "m",
+                                                            keyboardType = KeyboardType.Decimal
+                                                        )
+                                                    }
+                                                    Box(modifier = Modifier.weight(1f)) {
+                                                        LiquidTextField(
+                                                            value = wall.heightInput,
+                                                            onValueChange = { newH ->
+                                                                viewModel.updateActiveArea { a ->
+                                                                    val updated = a.bathroomWall.walls.toMutableList()
+                                                                    updated[idx] = updated[idx].copy(heightInput = newH)
+                                                                    a.copy(bathroomWall = a.bathroomWall.copy(walls = updated))
+                                                                }
+                                                            },
+                                                            label = "Height",
+                                                            suffix = "m",
+                                                            keyboardType = KeyboardType.Decimal
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    OutlinedButton(
+                                        onClick = {
+                                            viewModel.updateActiveArea { a ->
+                                                val nextNum = a.bathroomWall.walls.size + 1
+                                                val defH = a.bathroomWall.walls.firstOrNull()?.heightInput ?: "2.4"
+                                                val newWall = WallDimension(name = "Wall $nextNum", lengthInput = "3.0", heightInput = defH)
+                                                a.copy(bathroomWall = a.bathroomWall.copy(walls = a.bathroomWall.walls + newWall))
+                                            }
+                                        },
+                                        shape = RoundedCornerShape(12.dp),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("Add another wall", color = LiquidGrassPrimary, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            } else {
+                                // TOTAL AREA MODE
+                                LiquidTextField(
+                                    value = area.bathroomWall.totalWallAreaInput,
+                                    onValueChange = { v ->
+                                        viewModel.updateActiveArea { a ->
+                                            a.copy(bathroomWall = a.bathroomWall.copy(totalWallAreaInput = v))
+                                        }
+                                    },
+                                    label = "Total wall area (m²)",
+                                    placeholder = "e.g. 24.5",
+                                    suffix = "m²",
+                                    keyboardType = KeyboardType.Decimal,
+                                    testTag = "bathroom_total_wall_area_input"
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = "Openings to subtract from walls:",
+                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = TextForestDeep)
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            // Doors row
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Box(modifier = Modifier.weight(1f)) {
+                                    LiquidTextField(
+                                        value = area.bathroomWall.doorCount.toString(),
+                                        onValueChange = {
+                                            val c = it.trim().toIntOrNull() ?: 0
+                                            viewModel.updateActiveArea { a -> a.copy(bathroomWall = a.bathroomWall.copy(doorCount = c)) }
+                                        },
+                                        label = "Doors",
+                                        keyboardType = KeyboardType.Number
+                                    )
+                                }
+                                Box(modifier = Modifier.weight(1f)) {
+                                    LiquidTextField(
+                                        value = area.bathroomWall.doorWidthM.toString(),
+                                        onValueChange = {
+                                            val v = TileCalculatorEngine.parseNum(it)
+                                            viewModel.updateActiveArea { a -> a.copy(bathroomWall = a.bathroomWall.copy(doorWidthM = v)) }
+                                        },
+                                        label = "Door width",
+                                        suffix = "m",
+                                        keyboardType = KeyboardType.Decimal
+                                    )
+                                }
+                                Box(modifier = Modifier.weight(1f)) {
+                                    LiquidTextField(
+                                        value = area.bathroomWall.doorHeightM.toString(),
+                                        onValueChange = {
+                                            val v = TileCalculatorEngine.parseNum(it)
+                                            viewModel.updateActiveArea { a -> a.copy(bathroomWall = a.bathroomWall.copy(doorHeightM = v)) }
+                                        },
+                                        label = "Door height",
+                                        suffix = "m",
+                                        keyboardType = KeyboardType.Decimal
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            // Windows row
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Box(modifier = Modifier.weight(1f)) {
+                                    LiquidTextField(
+                                        value = area.bathroomWall.windowCount.toString(),
+                                        onValueChange = {
+                                            val c = it.trim().toIntOrNull() ?: 0
+                                            viewModel.updateActiveArea { a -> a.copy(bathroomWall = a.bathroomWall.copy(windowCount = c)) }
+                                        },
+                                        label = "Windows",
+                                        keyboardType = KeyboardType.Number
+                                    )
+                                }
+                                Box(modifier = Modifier.weight(1f)) {
+                                    LiquidTextField(
+                                        value = area.bathroomWall.windowWidthM.toString(),
+                                        onValueChange = {
+                                            val v = TileCalculatorEngine.parseNum(it)
+                                            viewModel.updateActiveArea { a -> a.copy(bathroomWall = a.bathroomWall.copy(windowWidthM = v)) }
+                                        },
+                                        label = "Win width",
+                                        suffix = "m",
+                                        keyboardType = KeyboardType.Decimal
+                                    )
+                                }
+                                Box(modifier = Modifier.weight(1f)) {
+                                    LiquidTextField(
+                                        value = area.bathroomWall.windowHeightM.toString(),
+                                        onValueChange = {
+                                            val v = TileCalculatorEngine.parseNum(it)
+                                            viewModel.updateActiveArea { a -> a.copy(bathroomWall = a.bathroomWall.copy(windowHeightM = v)) }
+                                        },
+                                        label = "Win height",
+                                        suffix = "m",
+                                        keyboardType = KeyboardType.Decimal
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(10.dp))
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -341,6 +639,28 @@ fun AreaEditorScreen(
                                     colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = LiquidGrassPrimary)
                                 )
                             }
+
+                            Spacer(modifier = Modifier.height(14.dp))
+                            HorizontalDivider(color = LiquidGrassPale, thickness = 1.dp)
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            // Wall tile size picker (can be different from floor tile!)
+                            TileSpecInlineEditor(
+                                title = "Wall tile size (can be different from floor):",
+                                spec = area.bathroomWallTileSpec,
+                                presets = listOf(
+                                    Pair("20 x 30 cm", Pair(20.0, 30.0)),
+                                    Pair("25 x 40 cm", Pair(25.0, 40.0)),
+                                    Pair("30 x 60 cm", Pair(60.0, 30.0)),
+                                    Pair("30 x 30 cm", Pair(30.0, 30.0)),
+                                    Pair("60 x 60 cm", Pair(60.0, 60.0)),
+                                    Pair("Custom size", Pair(0.0, 0.0))
+                                ),
+                                onUpdate = { updated ->
+                                    viewModel.updateActiveArea { a -> a.copy(bathroomWallTileSpec = updated) }
+                                },
+                                testTagPrefix = "bath_wall"
+                            )
                         }
                     }
                 }
@@ -728,6 +1048,145 @@ fun AreaEditorScreen(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TileSpecInlineEditor(
+    title: String,
+    spec: TileSpec,
+    presets: List<Pair<String, Pair<Double, Double>>>,
+    onUpdate: (TileSpec) -> Unit,
+    testTagPrefix: String = "tile"
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = TextForestDeep)
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            presets.forEach { (label, dims) ->
+                val isSelected = spec.sizeLabel == label
+                LiquidPillChip(
+                    label = label,
+                    isSelected = isSelected,
+                    onClick = {
+                        if (label == "Custom size") {
+                            onUpdate(spec.copy(sizeLabel = label, isCustom = true))
+                        } else {
+                            onUpdate(
+                                spec.copy(
+                                    sizeLabel = label,
+                                    lengthCm = dims.first,
+                                    widthCm = dims.second,
+                                    isCustom = false
+                                )
+                            )
+                        }
+                    }
+                )
+            }
+        }
+
+        if (spec.isCustom) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Box(modifier = Modifier.weight(1f)) {
+                    LiquidTextField(
+                        value = spec.lengthCm.toString(),
+                        onValueChange = {
+                            val v = TileCalculatorEngine.parseNum(it)
+                            onUpdate(spec.copy(lengthCm = v))
+                        },
+                        label = "Length (cm)",
+                        placeholder = "30",
+                        keyboardType = KeyboardType.Decimal
+                    )
+                }
+                Box(modifier = Modifier.weight(1f)) {
+                    LiquidTextField(
+                        value = spec.widthCm.toString(),
+                        onValueChange = {
+                            val v = TileCalculatorEngine.parseNum(it)
+                            onUpdate(spec.copy(widthCm = v))
+                        },
+                        label = "Width (cm)",
+                        placeholder = "30",
+                        keyboardType = KeyboardType.Decimal
+                    )
+                }
+            }
+        }
+
+        LiquidTextField(
+            value = spec.tilesPerBox.toString(),
+            onValueChange = {
+                val c = it.trim().toIntOrNull() ?: 12
+                onUpdate(spec.copy(tilesPerBox = c))
+            },
+            label = "Number of tiles in one box",
+            placeholder = "12",
+            suffix = "tiles / box",
+            keyboardType = KeyboardType.Number,
+            testTag = "${testTagPrefix}_tiles_per_box"
+        )
+
+        Text(
+            text = "Waste allowance (cuts & breakage):",
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, color = TextForestDeep)
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf(5.0, 10.0, 15.0, 20.0).forEach { w ->
+                LiquidPillChip(
+                    label = "${w.toInt()}%",
+                    isSelected = spec.wastePercent == w,
+                    onClick = { onUpdate(spec.copy(wastePercent = w)) },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+
+        Text(
+            text = "Tile spacers size:",
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, color = TextForestDeep)
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            listOf(1.5, 2.0, 3.0, 4.0, 5.0, 6.0).forEach { sp ->
+                LiquidPillChip(
+                    label = "${if (sp == 1.5) "1.5" else sp.toInt().toString()} mm",
+                    isSelected = spec.spacerMm == sp,
+                    onClick = { onUpdate(spec.copy(spacerMm = sp)) }
+                )
+            }
+        }
+
+        Text(
+            text = "Joint depth (tile thickness):",
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, color = TextForestDeep)
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            listOf(6.0, 8.0, 10.0, 12.0).forEach { depth ->
+                LiquidPillChip(
+                    label = "${depth.toInt()} mm",
+                    isSelected = spec.jointDepthMm == depth,
+                    onClick = { onUpdate(spec.copy(jointDepthMm = depth)) },
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
     }

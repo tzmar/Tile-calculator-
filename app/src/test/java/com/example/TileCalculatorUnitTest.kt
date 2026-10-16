@@ -385,6 +385,138 @@ class TileCalculatorUnitTest {
     }
 
     @Test
+    fun testBathroomSeparatedFloorAndWallTiles() {
+        // Bathroom: Floor 3.0 m x 2.0 m = 6.0 m²
+        // Floor tile: 60 x 60 cm, 12 tiles/box, 3 mm spacer, 10 mm joint depth
+        val floorTile = TileSpec(sizeLabel = "60 x 60 cm", lengthCm = 60.0, widthCm = 60.0, tilesPerBox = 12, spacerMm = 3.0, jointDepthMm = 10.0, wastePercent = 10.0)
+
+        // Wall tile: 30 x 60 cm, 8 tiles/box, 2 mm spacer, 8 mm joint depth
+        val wallTile = TileSpec(sizeLabel = "30 x 60 cm", lengthCm = 60.0, widthCm = 30.0, tilesPerBox = 8, spacerMm = 2.0, jointDepthMm = 8.0, wastePercent = 10.0)
+
+        val walls = listOf(
+            WallDimension(name = "Wall 1 (Front)", lengthInput = "3.0", heightInput = "2.5"),
+            WallDimension(name = "Wall 2 (Back)", lengthInput = "3.0", heightInput = "2.5"),
+            WallDimension(name = "Wall 3 (Left)", lengthInput = "2.0", heightInput = "2.5"),
+            WallDimension(name = "Wall 4 (Right)", lengthInput = "2.0", heightInput = "2.5")
+        )
+        // Gross wall area = 2 * (3.0 + 2.0) * 2.5 = 25.0 m²
+        // Minus 1 door (0.8 x 2.0 = 1.6 m²) and 1 window (0.6 x 0.6 = 0.36 m²) = 23.04 m² net
+        val wallConfig = BathroomWallConfig(
+            enabled = true,
+            entryMode = BathroomWallEntryMode.PER_WALL,
+            walls = walls,
+            doorCount = 1,
+            doorWidthM = 0.8,
+            doorHeightM = 2.0,
+            windowCount = 1,
+            windowWidthM = 0.6,
+            windowHeightM = 0.6
+        )
+
+        val bathroom = AreaItem(
+            name = "En-Suite Bathroom",
+            type = AreaType.BATHROOM,
+            lengthInput = "3.0",
+            widthInput = "2.0",
+            bathroomFloorTileSpec = floorTile,
+            bathroomWallTileSpec = wallTile,
+            bathroomWall = wallConfig
+        )
+
+        val job = Job(
+            jobName = "Bathroom Reno",
+            areas = listOf(bathroom),
+            sharedFloorTileSpec = floorTile,
+            sharedWallTileSpec = wallTile
+        )
+
+        val calc = TileCalculatorEngine.calculateJob(job)
+        val areaRes = calc.areaResults[0]
+
+        // 1. Separate Areas
+        assertEquals(6.0, areaRes.floorAreaSqM, 0.01)
+        assertEquals(23.04, areaRes.wallAreaSqM, 0.01)
+        assertEquals(6.0, calc.totalFloorAreaSqM, 0.01)
+        assertEquals(23.04, calc.totalWallAreaSqM, 0.01)
+
+        // 2. Separate Tile Counts & Box Counts
+        assertTrue(areaRes.hasWallTiles)
+        assertTrue(calc.hasWallTiles)
+
+        // Floor: 6.0 m² / (0.603 * 0.603) = ~16.5 tiles * 1.10 = 19 tiles -> 2 boxes of 12 (24 tiles, 5 spare)
+        assertEquals(19, areaRes.totalFloorTilesNeeded)
+        assertEquals(2, areaRes.floorBoxesToBuy)
+        assertEquals(2, calc.totalFloorBoxes)
+        assertEquals(19, calc.totalFloorTilesNeeded)
+        assertEquals(24, calc.totalFloorTilesInBoxes)
+        assertEquals(5, calc.totalFloorSpareTiles)
+        assertEquals("60 x 60 cm", calc.floorTileSizeLabel)
+
+        // Walls: 23.04 m² / (0.602 * 0.302) = ~126.7 tiles * 1.10 = 140 tiles -> 18 boxes of 8 (144 tiles, 4 spare)
+        assertEquals(140, areaRes.wallTilesNeeded)
+        assertEquals(18, areaRes.wallBoxesToBuy)
+        assertEquals(18, calc.totalWallBoxes)
+        assertEquals(140, calc.totalWallTilesNeeded)
+        assertEquals(144, calc.totalWallTilesInBoxes)
+        assertEquals(4, calc.totalWallSpareTiles)
+        assertEquals("30 x 60 cm", calc.wallTileSizeLabel)
+
+        // 3. Separate Spacers
+        assertTrue(calc.floorSpacersCount > 0)
+        assertTrue(calc.wallSpacersCount > 0)
+        assertEquals(calc.totalSpacersCount, calc.floorSpacersCount + calc.wallSpacersCount)
+        assertEquals(3.0, calc.floorSpacerMm, 0.01)
+        assertEquals(2.0, calc.wallSpacerMm, 0.01)
+
+        // 4. Separate Adhesive
+        assertTrue(calc.floorAdhesiveBags > 0)
+        assertTrue(calc.wallAdhesiveBags > 0)
+        assertEquals(calc.adhesiveBags, kotlin.math.ceil(areaRes.floorAdhesiveBagsRaw + areaRes.wallAdhesiveBagsRaw).toInt())
+
+        // 5. Separate Grout
+        assertTrue(calc.floorGroutKg > 0.0)
+        assertTrue(calc.wallGroutKg > 0.0)
+        assertTrue(calc.floorGroutBags > 0)
+        assertTrue(calc.wallGroutBags > 0)
+
+        // 6. Quotation output contains separate sections
+        val quote = TileCalculatorEngine.generateQuotation(job, UserProfile(), detailed = true)
+        assertTrue(quote.contains("Floor tiles needed: 2 boxes"))
+        assertTrue(quote.contains("Wall tiles needed: 18 boxes"))
+        assertTrue(quote.contains("Floor:"))
+        assertTrue(quote.contains("Walls:"))
+    }
+
+    @Test
+    fun testBathroomTotalWallAreaMode() {
+        val wallConfig = BathroomWallConfig(
+            enabled = true,
+            entryMode = BathroomWallEntryMode.TOTAL_AREA,
+            totalWallAreaInput = "18.5",
+            doorCount = 0,
+            windowCount = 0
+        )
+
+        val bathroom = AreaItem(
+            name = "Guest Bath",
+            type = AreaType.BATHROOM,
+            lengthInput = "2.0",
+            widthInput = "1.5",
+            bathroomWall = wallConfig
+        )
+
+        val job = Job(areas = listOf(bathroom))
+        val calc = TileCalculatorEngine.calculateJob(job)
+        val areaRes = calc.areaResults[0]
+
+        assertEquals(3.0, areaRes.floorAreaSqM, 0.01)
+        assertEquals(18.5, areaRes.wallAreaSqM, 0.01)
+        assertTrue(areaRes.floorBoxesToBuy > 0)
+        assertTrue(areaRes.wallBoxesToBuy > 0)
+        assertTrue(calc.hasWallTiles)
+    }
+
+    @Test
     fun testLegacyDefaultCalculations() {
         // Test compatibility helper methods
         viewModel.onRoomLengthChange("3.5")

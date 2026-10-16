@@ -583,36 +583,73 @@ private fun AreaCardItem(
             }
 
             // Size & m² details
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                val sizeText = when (area.type) {
-                    AreaType.ROOM_FLOOR -> "${area.lengthInput} x ${area.widthInput} ${unit.symbol}"
-                    AreaType.BATHROOM -> "${area.lengthInput} x ${area.widthInput} ${unit.symbol}"
-                    AreaType.VERANDA -> "${area.lengthInput} x ${area.widthInput} ${unit.symbol}"
-                    AreaType.WALL_ONLY -> "${area.wallOnlyLengthInput} x ${area.wallOnlyHeightInput} ${unit.symbol}"
-                }
-                Text(
-                    text = "Size: $sizeText",
-                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
-                    color = TextForestMuted
-                )
-                Text(
-                    text = String.format(Locale.getDefault(), "%.2f m²", areaCalc?.totalAreaSqM ?: 0.0),
-                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
-                    color = LiquidGrassDeep
-                )
-
-                if (areaCalc != null && areaCalc.isTileChosen) {
-                    Spacer(modifier = Modifier.weight(1f))
+            if (area.type == AreaType.BATHROOM && areaCalc != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Text(
-                        text = "${areaCalc.floorBoxesToBuy} boxes",
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            fontWeight = FontWeight.ExtraBold,
+                        text = "Floor: ${String.format(Locale.getDefault(), "%.2f m²", areaCalc.floorAreaSqM)} (${areaCalc.floorTileSizeLabel})",
+                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+                        color = TextForestMuted
+                    )
+                    Text(
+                        text = "${areaCalc.floorBoxesToBuy} boxes (${areaCalc.totalFloorTilesNeeded} tiles)",
+                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                        color = LiquidGrassPrimary
+                    )
+                }
+                if (areaCalc.hasWallTiles && areaCalc.wallAreaSqM > 0) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Walls: ${String.format(Locale.getDefault(), "%.2f m²", areaCalc.wallAreaSqM)} (${areaCalc.wallTileSizeLabel})",
+                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+                            color = TextForestMuted
+                        )
+                        Text(
+                            text = "${areaCalc.wallBoxesToBuy} boxes (${areaCalc.wallTilesNeeded} tiles)",
+                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
                             color = LiquidGrassPrimary
                         )
+                    }
+                }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    val sizeText = when (area.type) {
+                        AreaType.ROOM_FLOOR -> "${area.lengthInput} x ${area.widthInput} ${unit.symbol}"
+                        AreaType.BATHROOM -> "${area.lengthInput} x ${area.widthInput} ${unit.symbol}"
+                        AreaType.VERANDA -> "${area.lengthInput} x ${area.widthInput} ${unit.symbol}"
+                        AreaType.WALL_ONLY -> "${area.wallOnlyLengthInput} x ${area.wallOnlyHeightInput} ${unit.symbol}"
+                    }
+                    Text(
+                        text = "Size: $sizeText",
+                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+                        color = TextForestMuted
                     )
+                    Text(
+                        text = String.format(Locale.getDefault(), "%.2f m²", areaCalc?.totalAreaSqM ?: 0.0),
+                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                        color = LiquidGrassDeep
+                    )
+
+                    if (areaCalc != null && areaCalc.isTileChosen) {
+                        Spacer(modifier = Modifier.weight(1f))
+                        Text(
+                            text = "${areaCalc.floorBoxesToBuy} boxes",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontWeight = FontWeight.ExtraBold,
+                                color = LiquidGrassPrimary
+                            )
+                        )
+                    }
                 }
             }
 
@@ -1300,20 +1337,102 @@ private fun AdhesiveSectionControls(
 
 @Composable
 private fun HeroBoxesCard(calc: JobCalculatedResult) {
+    if (!calc.isTileChosen) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .shadow(14.dp, RoundedCornerShape(28.dp), spotColor = LiquidGrassDeep.copy(alpha = 0.45f))
+                .clip(RoundedCornerShape(28.dp))
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color(0xFF059669),
+                            Color(0xFF047857),
+                            Color(0xFF064E3B)
+                        )
+                    )
+                )
+                .border(
+                    width = 1.dp,
+                    brush = Brush.verticalGradient(
+                        listOf(Color.White.copy(alpha = 0.6f), Color.Transparent)
+                    ),
+                    shape = RoundedCornerShape(28.dp)
+                )
+                .testTag("boxes_result_card")
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Awaiting tile choice",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    ),
+                    modifier = Modifier.padding(vertical = 12.dp)
+                )
+                Text(
+                    text = "Total measured area: ${String.format(Locale.getDefault(), "%.2f m²", calc.grandTotalAreaSqM)}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFFD1FAE5)
+                )
+            }
+        }
+        return
+    }
+
+    val showBoth = calc.hasWallTiles && (calc.totalWallBoxes > 0 || calc.totalWallTilesNeeded > 0) && (calc.totalFloorBoxes > 0 || calc.totalFloorTilesNeeded > 0)
+    val showOnlyWall = calc.hasWallTiles && (calc.totalWallBoxes > 0 || calc.totalWallTilesNeeded > 0) && calc.totalFloorAreaSqM <= 0.0
+
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        if (!showOnlyWall) {
+            // FLOOR TILES NEEDED CARD
+            SingleTileHeroCard(
+                categoryLabel = "FLOOR TILES NEEDED",
+                boxCount = calc.totalFloorBoxes,
+                boxLabel = if (calc.totalFloorBoxes == 1) "BOX OF FLOOR TILES" else "BOXES OF FLOOR TILES",
+                usageText = "You will use ${calc.totalFloorTilesNeeded} of the ${calc.totalFloorTilesInBoxes} tiles, so you will have ${calc.totalFloorSpareTiles} spare.",
+                specText = "${calc.floorTileSizeLabel} • ${calc.floorTilesPerBox} tiles/box • ${String.format(Locale.getDefault(), "%.2f m²", calc.totalFloorAreaSqM)}",
+                gradientColors = listOf(Color(0xFF059669), Color(0xFF047857), Color(0xFF064E3B)),
+                testTag = if (showBoth) "floor_tiles_needed_card" else "boxes_result_card"
+            )
+        }
+
+        if (showBoth || showOnlyWall) {
+            // WALL TILES NEEDED CARD
+            SingleTileHeroCard(
+                categoryLabel = "WALL TILES NEEDED",
+                boxCount = calc.totalWallBoxes,
+                boxLabel = if (calc.totalWallBoxes == 1) "BOX OF WALL TILES" else "BOXES OF WALL TILES",
+                usageText = "You will use ${calc.totalWallTilesNeeded} of the ${calc.totalWallTilesInBoxes} tiles, so you will have ${calc.totalWallSpareTiles} spare.",
+                specText = "${calc.wallTileSizeLabel} • ${calc.wallTilesPerBox} tiles/box • ${String.format(Locale.getDefault(), "%.2f m²", calc.totalWallAreaSqM)}",
+                gradientColors = listOf(Color(0xFF0284C7), Color(0xFF0369A1), Color(0xFF075985)),
+                testTag = "wall_tiles_needed_card"
+            )
+        }
+    }
+}
+
+@Composable
+private fun SingleTileHeroCard(
+    categoryLabel: String,
+    boxCount: Int,
+    boxLabel: String,
+    usageText: String,
+    specText: String,
+    gradientColors: List<Color>,
+    testTag: String
+) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(14.dp, RoundedCornerShape(28.dp), spotColor = LiquidGrassDeep.copy(alpha = 0.45f))
+            .shadow(14.dp, RoundedCornerShape(28.dp), spotColor = gradientColors[0].copy(alpha = 0.45f))
             .clip(RoundedCornerShape(28.dp))
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        Color(0xFF059669),
-                        Color(0xFF047857),
-                        Color(0xFF064E3B)
-                    )
-                )
-            )
+            .background(Brush.verticalGradient(gradientColors))
             .border(
                 width = 1.dp,
                 brush = Brush.verticalGradient(
@@ -1321,12 +1440,12 @@ private fun HeroBoxesCard(calc: JobCalculatedResult) {
                 ),
                 shape = RoundedCornerShape(28.dp)
             )
-            .testTag("boxes_result_card")
+            .testTag(testTag)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 24.dp),
+                .padding(horizontal = 24.dp, vertical = 22.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Surface(
@@ -1345,7 +1464,7 @@ private fun HeroBoxesCard(calc: JobCalculatedResult) {
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "BOXES TO BUY",
+                        text = categoryLabel,
                         style = MaterialTheme.typography.labelMedium.copy(
                             fontWeight = FontWeight.Black,
                             letterSpacing = 1.4.sp,
@@ -1358,56 +1477,53 @@ private fun HeroBoxesCard(calc: JobCalculatedResult) {
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            if (calc.isTileChosen) {
-                Text(
-                    text = "${calc.totalFloorBoxes}",
-                    style = MaterialTheme.typography.displayLarge.copy(
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 72.sp,
-                        lineHeight = 76.sp,
-                        color = Color.White
-                    )
+            Text(
+                text = "$boxCount",
+                style = MaterialTheme.typography.displayLarge.copy(
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 68.sp,
+                    lineHeight = 72.sp,
+                    color = Color.White
                 )
-                Text(
-                    text = if (calc.totalFloorBoxes == 1) "BOX OF TILES" else "BOXES OF TILES",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp,
-                        color = Color(0xFFD1FAE5)
-                    )
+            )
+            Text(
+                text = boxLabel,
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp,
+                    color = Color(0xFFE0F2FE)
                 )
+            )
 
-                Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-                Surface(
-                    color = Color.White.copy(alpha = 0.16f),
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier.border(1.dp, Color.White.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
+            Surface(
+                color = Color.White.copy(alpha = 0.16f),
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.border(1.dp, Color.White.copy(alpha = 0.3f), RoundedCornerShape(14.dp))
+            ) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "You will use ${calc.totalFloorTilesNeeded} of the ${calc.totalFloorTilesInBoxes} tiles, so you will have ${calc.totalFloorSpareTiles} spare.",
+                        text = usageText,
                         style = MaterialTheme.typography.bodyMedium.copy(
                             fontWeight = FontWeight.SemiBold,
-                            fontSize = 14.sp
+                            fontSize = 13.sp
                         ),
-                        color = Color.White,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = specText,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 12.sp,
+                            color = Color.White.copy(alpha = 0.85f)
+                        )
                     )
                 }
-            } else {
-                Text(
-                    text = "Awaiting tile choice",
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    ),
-                    modifier = Modifier.padding(vertical = 12.dp)
-                )
-                Text(
-                    text = "Total measured area: ${String.format(Locale.getDefault(), "%.2f m²", calc.grandTotalAreaSqM)}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFFD1FAE5)
-                )
             }
         }
     }
@@ -1422,23 +1538,81 @@ private fun MaterialsSummaryCard(calc: JobCalculatedResult) {
         )
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Adhesive
-        MaterialSummaryRow(
-            icon = Icons.Outlined.Handyman,
-            title = "Tile Adhesive (Cement)",
-            subtitle = "${calc.adhesiveBrandName} (Floor: ${calc.floorThicknessMm.toInt()} mm, Walls/Skirting: ${calc.wallThicknessMm.toInt()} mm bed)",
-            quantity = "${calc.adhesiveBags} bags (20 kg)"
-        )
+        // ADHESIVE: Separate for floor and walls when wall tiles exist
+        if (calc.hasWallTiles && calc.totalWallAreaSqM > 0 && calc.totalFloorAreaSqM > 0) {
+            MaterialSummaryRow(
+                icon = Icons.Outlined.Handyman,
+                title = "Floor Tile Adhesive",
+                subtitle = "${calc.adhesiveBrandName} (${calc.floorThicknessMm.toInt()} mm bed, ${String.format(Locale.getDefault(), "%.2f m²", calc.totalFloorAreaSqM)})",
+                quantity = "${calc.floorAdhesiveBags} bags (20 kg)"
+            )
+            HorizontalDivider(color = LiquidGrassPale, thickness = 1.dp)
+            MaterialSummaryRow(
+                icon = Icons.Outlined.Handyman,
+                title = "Wall Tile Adhesive",
+                subtitle = "${calc.adhesiveBrandName} (${calc.wallThicknessMm.toInt()} mm bed, ${String.format(Locale.getDefault(), "%.2f m²", calc.totalWallAreaSqM + calc.totalSkirtingAreaSqM)})",
+                quantity = "${calc.wallAdhesiveBags + calc.skirtingAdhesiveBags} bags (20 kg)"
+            )
+            Surface(
+                color = LiquidGrassPale.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+            ) {
+                Text(
+                    text = "Total adhesive to buy: ${calc.adhesiveBags} bags (20 kg)",
+                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold, color = LiquidGrassDeep),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                )
+            }
+        } else {
+            MaterialSummaryRow(
+                icon = Icons.Outlined.Handyman,
+                title = "Tile Adhesive (Cement)",
+                subtitle = "${calc.adhesiveBrandName} (Floor: ${calc.floorThicknessMm.toInt()} mm, Walls/Skirting: ${calc.wallThicknessMm.toInt()} mm bed)",
+                quantity = "${calc.adhesiveBags} bags (20 kg)"
+            )
+        }
 
         HorizontalDivider(color = LiquidGrassPale, thickness = 1.dp)
 
-        // Grout
-        MaterialSummaryRow(
-            icon = Icons.Outlined.CheckCircle,
-            title = "Tile Grout",
-            subtitle = "${String.format(Locale.US, "%.1f", calc.totalGroutKg)} kg needed (${calc.jointDepthMm.toInt()} mm depth, ${calc.spacerSizeMm.toInt()} mm joints)",
-            quantity = "${calc.groutBags} ${if (calc.groutBags == 1) "bag" else "bags"} (${calc.groutBagSizeKg} kg)"
-        )
+        // GROUT: Separate for floor and walls when wall tiles exist
+        if (calc.hasWallTiles && calc.totalWallAreaSqM > 0 && calc.totalFloorAreaSqM > 0) {
+            MaterialSummaryRow(
+                icon = Icons.Outlined.CheckCircle,
+                title = "Floor Tile Grout",
+                subtitle = "${String.format(Locale.US, "%.1f", calc.floorGroutKg)} kg needed (${calc.floorJointDepthMm.toInt()} mm depth, ${calc.floorSpacerMm.toInt()} mm joints)",
+                quantity = "${calc.floorGroutBags} ${if (calc.floorGroutBags == 1) "bag" else "bags"} (${calc.groutBagSizeKg} kg)"
+            )
+            HorizontalDivider(color = LiquidGrassPale, thickness = 1.dp)
+            MaterialSummaryRow(
+                icon = Icons.Outlined.CheckCircle,
+                title = "Wall Tile Grout",
+                subtitle = "${String.format(Locale.US, "%.1f", calc.wallGroutKg)} kg needed (${calc.wallJointDepthMm.toInt()} mm depth, ${calc.wallSpacerMm.toInt()} mm joints)",
+                quantity = "${calc.wallGroutBags} ${if (calc.wallGroutBags == 1) "bag" else "bags"} (${calc.groutBagSizeKg} kg)"
+            )
+            Surface(
+                color = LiquidGrassPale.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+            ) {
+                Text(
+                    text = "Total grout to buy: ${calc.groutBags} bags (${String.format(Locale.US, "%.1f", calc.totalGroutKg)} kg)",
+                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold, color = LiquidGrassDeep),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                )
+            }
+        } else {
+            MaterialSummaryRow(
+                icon = Icons.Outlined.CheckCircle,
+                title = "Tile Grout",
+                subtitle = "${String.format(Locale.US, "%.1f", calc.totalGroutKg)} kg needed (${calc.jointDepthMm.toInt()} mm depth, ${calc.spacerSizeMm.toInt()} mm joints)",
+                quantity = "${calc.groutBags} ${if (calc.groutBags == 1) "bag" else "bags"} (${calc.groutBagSizeKg} kg)"
+            )
+        }
 
         if (calc.bondingLiquidLitres > 0) {
             HorizontalDivider(color = LiquidGrassPale, thickness = 1.dp)
@@ -1453,7 +1627,6 @@ private fun MaterialsSummaryCard(calc: JobCalculatedResult) {
                 quantity = TileCalculatorEngine.formatLitres(calc.bondingLiquidLitres)
             )
 
-            // Result callout as specified: e.g. "Bonding liquid: 1 litre (about 250 ml per bag of adhesive)"
             Surface(
                 color = LiquidGrassPale.copy(alpha = 0.5f),
                 shape = RoundedCornerShape(12.dp),
@@ -1472,14 +1645,31 @@ private fun MaterialsSummaryCard(calc: JobCalculatedResult) {
             }
         }
 
+        // SPACERS: Separate for floor and walls when wall tiles exist
         if (calc.isTileChosen && calc.totalSpacersCount > 0) {
             HorizontalDivider(color = LiquidGrassPale, thickness = 1.dp)
-            MaterialSummaryRow(
-                icon = Icons.Outlined.GridOn,
-                title = "Tile Spacers",
-                subtitle = "Check size on pack (${calc.spacerSizeMm.toInt()} mm)",
-                quantity = "${calc.totalSpacersCount} pieces"
-            )
+            if (calc.hasWallTiles && calc.wallSpacersCount > 0 && calc.floorSpacersCount > 0) {
+                MaterialSummaryRow(
+                    icon = Icons.Outlined.GridOn,
+                    title = "Floor Tile Spacers",
+                    subtitle = "Size: ${calc.floorSpacerMm.toInt()} mm",
+                    quantity = "${calc.floorSpacersCount} pieces"
+                )
+                HorizontalDivider(color = LiquidGrassPale, thickness = 1.dp)
+                MaterialSummaryRow(
+                    icon = Icons.Outlined.GridOn,
+                    title = "Wall Tile Spacers",
+                    subtitle = "Size: ${calc.wallSpacerMm.toInt()} mm",
+                    quantity = "${calc.wallSpacersCount} pieces"
+                )
+            } else {
+                MaterialSummaryRow(
+                    icon = Icons.Outlined.GridOn,
+                    title = "Tile Spacers",
+                    subtitle = "Check size on pack (${calc.spacerSizeMm.toInt()} mm)",
+                    quantity = "${calc.totalSpacersCount} pieces"
+                )
+            }
         }
 
         if (calc.plasticEdgeStripPieces > 0) {
